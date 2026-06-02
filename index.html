@@ -3604,23 +3604,27 @@ boot();
     position:fixed; right:16px;
     bottom:calc(20px + env(safe-area-inset-bottom));
     z-index:300; height:48px; width:48px; padding:0;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; align-items:center; justify-content:flex-start;
     border-radius:999px; cursor:pointer; overflow:hidden; white-space:nowrap;
     color:#fff; background:var(--accent,#111199); border:none;
     box-shadow:0 5px 16px rgba(17,17,153,.40);
     font-family:var(--sans,system-ui,sans-serif); font-weight:700;
-    transition:padding .18s, background .16s, box-shadow .16s, transform .16s;
+    transition:width .24s cubic-bezier(.4,0,.2,1), background .16s, box-shadow .16s, transform .16s;
   }
-  #tpFlagFab .glyph{ font-size:19px; line-height:1; }
-  #tpFlagFab .label{ display:flex; flex-direction:column; justify-content:center; text-align:left; max-width:0; opacity:0; overflow:hidden; transition:max-width .22s, opacity .15s, margin-left .2s; }
+  #tpFlagFab .glyph{ flex:0 0 48px; display:flex; align-items:center; justify-content:center; font-size:19px; line-height:1; }
+  #tpFlagFab .label{
+    display:flex; flex-direction:column; justify-content:center; text-align:left;
+    padding-right:18px; opacity:0; transform:translateX(-6px);
+    transition:opacity .18s ease, transform .2s ease;
+  }
   #tpFlagFab .label-tp{ font-size:14px; font-weight:700; line-height:1.15; white-space:nowrap; }
   #tpFlagFab .label-en{ font-size:11px; font-weight:600; line-height:1.1; opacity:.82; white-space:nowrap; }
   #tpFlagFab:hover, #tpFlagFab:focus-visible{
-    width:auto; padding:0 16px; outline:none;
+    width:190px; outline:none;
     background:var(--accent-soft,#3a3ac0);
     box-shadow:0 8px 22px rgba(17,17,153,.45); transform:translateY(-1px);
   }
-  #tpFlagFab:hover .label, #tpFlagFab:focus-visible .label{ max-width:150px; opacity:1; margin-left:9px; }
+  #tpFlagFab:hover .label, #tpFlagFab:focus-visible .label{ opacity:1; transform:translateX(0); }
   /* during a lesson, lift it above the sticky Check bar */
   #tpFlagFab.on-runner{ bottom:calc(92px + env(safe-area-inset-bottom)); }
 
