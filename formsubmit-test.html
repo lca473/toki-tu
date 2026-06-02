@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FormSubmit test · toki tu</title>
+<style>
+  :root{
+    --ultramarine:#111199; --icterine:#FFFF77;
+    --paper:#FCFBE4; --paper2:#F6F2C8; --card:#FFFFFD;
+    --ink:#13136B; --ink-dim:#6E6EC0; --line:#C7C7EC; --accent-soft:#3A3AC0;
+    --gold-bg:#FBF3B8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:var(--paper); color:var(--ink); line-height:1.5;
+    padding:24px 16px; max-width:680px; margin:0 auto;
+  }
+  h1{font-family:Georgia,serif; font-size:26px; margin-bottom:4px;}
+  h2{font-family:Georgia,serif; font-size:19px; margin-bottom:10px; color:var(--ink);}
+  .sub{color:var(--ink-dim); font-size:14px; margin-bottom:20px;}
+  .banner{
+    background:var(--gold-bg); border:1.5px solid #E8C400; border-radius:12px;
+    padding:13px 15px; font-size:13.5px; margin-bottom:22px;
+  }
+  .banner b{color:var(--ink);}
+  .card{
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    padding:18px; margin-bottom:18px;
+  }
+  .step{font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--accent-soft); text-transform:uppercase; margin-bottom:6px;}
+  .dummy{
+    background:linear-gradient(135deg,var(--paper2),#fff);
+    border:1px dashed var(--line); border-radius:10px; padding:16px; margin:12px 0;
+  }
+  .dummy .word{font-family:Georgia,serif; font-size:22px; color:var(--ultramarine);}
+  .dummy .gloss{color:var(--ink-dim); font-size:14px;}
+  button, .btn{
+    font:inherit; font-weight:700; font-size:15px; cursor:pointer; border:none;
+    border-radius:11px; padding:12px 18px; transition:.15s;
+    background:var(--ultramarine); color:#fff;
+  }
+  button:hover{background:var(--accent-soft);}
+  .btn-ghost{background:var(--card); color:var(--ink); border:1.5px solid var(--line);}
+  .btn-ghost:hover{background:var(--paper);}
+  #shot{display:none; width:100%; max-height:200px; object-fit:cover; object-position:top;
+        border-radius:10px; border:1px solid var(--line); margin:12px 0;}
+  textarea{
+    width:100%; min-height:70px; resize:vertical; padding:10px 12px; margin:10px 0;
+    border:1.5px solid var(--line); border-radius:10px; font:inherit; background:var(--paper); color:var(--ink);
+  }
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  #log{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
+    background:#0d0d4a; color:#cfe; border-radius:10px; padding:12px 14px; margin-top:12px;
+    white-space:pre-wrap; min-height:48px; display:none;
+  }
+  .ok{color:#9be29b;} .warn{color:#ffd27a;} .err{color:#ff9b9b;}
+  small{color:var(--ink-dim);}
+</style>
+</head>
+<body>
+
+  <h1>FormSubmit test</h1>
+  <div class="sub">A throwaway page to prove the flag-an-error flow really emails you. Edit nothing — just open and click.</div>
+
+  <div class="banner">
+    <b>Expect this the first time:</b> your first submission won't be the report — FormSubmit
+    will email you a one-time <b>confirmation link</b>. Click it, then submit again and the real
+    email (with the screenshot attached) will arrive. Reports go to <b>mijannijo@gmail.com</b>.
+  </div>
+
+  <!-- ─────────── TEST 1: the real feature ─────────── -->
+  <div class="card">
+    <div class="step">Test 1 — the real flag flow</div>
+    <h2>Flag an error (auto screenshot)</h2>
+    <p style="font-size:14px;">Pretend this is a dictionary entry with a mistake:</p>
+    <div class="dummy">
+      <div class="word">soweli</div>
+      <div class="gloss">(test entry) animal, land mammal — tap “Flag an error” as if this were wrong.</div>
+    </div>
+
+    <button id="flagBtn">⚑ Flag an error</button>
+
+    <div id="panel" style="display:none; margin-top:14px;">
+      <img id="shot" alt="screenshot preview">
+      <textarea id="note" placeholder="What's wrong? (optional)"></textarea>
+      <div class="row">
+        <button id="sendBtn">Send test report</button>
+        <button class="btn-ghost" id="cancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <!-- ─────────── TEST 2: bulletproof confirmation ─────────── -->
+  <div class="card">
+    <div class="step">Test 2 — quick confirmation</div>
+    <h2>Send a plain test email</h2>
+    <p style="font-size:14px; margin-bottom:12px;">
+      This submits a basic form and opens FormSubmit's own response page in a new tab —
+      so you can <b>see</b> the confirmation screen. Use this first to activate your address.
+    </p>
+    <!-- plain navigating form; target=_blank keeps this page open -->
+    <form id="plainForm" method="POST" enctype="multipart/form-data" target="_blank">
+      <input type="hidden" name="_subject" value="toki tu — TEST (plain form)">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="Message" value="Plain-form test from the FormSubmit test page.">
+      <button type="submit">Send plain test → opens FormSubmit</button>
+    </form>
+    <p style="margin-top:10px;"><small>Goes to the same inbox. Great for confirming delivery and doing the one-time activation.</small></p>
+  </div>
+
+  <p><small>When you're happy with it: in <b>flag-feature.html</b> set <b>MODE = 'formsubmit'</b>.
+  For production, swap your raw email for the FormSubmit alias (the random string it emails you on
+  confirmation) so your address isn't exposed in the page source.</small></p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function(){
+  /* ─────── the only setting ─────── */
+  const EMAIL = 'mijannijo@gmail.com';
+  const ENDPOINT = 'https://formsubmit.co/' + EMAIL;
+  /* ─────────────────────────────── */
+
+  document.getElementById('plainForm').action = ENDPOINT;
+
+  const flagBtn = document.getElementById('flagBtn');
+  const panel   = document.getElementById('panel');
+  const shot    = document.getElementById('shot');
+  const note    = document.getElementById('note');
+  const sendBtn = document.getElementById('sendBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const logEl   = document.getElementById('log');
+
+  let jpgBlob = null;
+
+  function log(msg, cls){
+    logEl.style.display = 'block';
+    const line = document.createElement('div');
+    if(cls) line.className = cls;
+    line.textContent = msg;
+    logEl.appendChild(line);
+  }
+  function clearLog(){ logEl.innerHTML=''; logEl.style.display='none'; }
+
+  flagBtn.addEventListener('click', async ()=>{
+    clearLog();
+    flagBtn.style.visibility = 'hidden';
+    log('Capturing the screen…');
+    try{
+      const canvas = await html2canvas(document.documentElement, {
+        x: window.scrollX, y: window.scrollY,
+        width: window.innerWidth, height: window.innerHeight,
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        useCORS:true, logging:false, scale: Math.min(2, window.devicePixelRatio||1)
+      });
+      shot.src = canvas.toDataURL('image/png');
+      shot.style.display = 'block';
+      jpgBlob = await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.85));
+      log('✓ Captured (' + Math.round(jpgBlob.size/1024) + ' KB)', 'ok');
+    }catch(err){
+      shot.style.display='none';
+      log('Could not capture a screenshot — you can still send the text. (' + err.message + ')', 'warn');
+    }finally{
+      flagBtn.style.visibility = 'visible';
+      panel.style.display = 'block';
+    }
+  });
+
+  cancelBtn.addEventListener('click', ()=>{ panel.style.display='none'; clearLog(); });
+
+  sendBtn.addEventListener('click', ()=>{
+    sendBtn.disabled = true;
+    log('Submitting to FormSubmit…');
+
+    let canInject = true;
+    try{ new DataTransfer(); }catch(e){ canInject = false; }
+    if(!jpgBlob || !canInject){
+      log('This browser blocked auto-attaching the image. The report text will still send;'
+        + ' use Test 2 to confirm delivery, or try Chrome/Firefox.', 'warn');
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.name = 'sink'; iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.action = ENDPOINT; form.method = 'POST';
+    form.enctype = 'multipart/form-data'; form.target = 'sink'; form.style.display='none';
+
+    const add = (n,v)=>{ const i=document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; form.appendChild(i); };
+    add('_subject', 'toki tu — TEST flag report');
+    add('_captcha', 'false');
+    add('_template', 'table');
+    add('Note', note.value.trim() || '(no note)');
+    add('Page', 'Test page');
+    add('Time', new Date().toLocaleString());
+
+    if(jpgBlob && canInject){
+      const fileInput = document.createElement('input');
+      fileInput.type='file'; fileInput.name='attachment';
+      const dt = new DataTransfer();
+      dt.items.add(new File([jpgBlob], 'toki-tu-test.jpg', {type:'image/jpeg'}));
+      fileInput.files = dt.files;
+      form.appendChild(fileInput);
+    }
+
+    document.body.appendChild(form);
+
+    let armed = false;
+    iframe.onload = ()=>{
+      if(!armed) return;                 // ignore the initial about:blank load
+      log('✓ Submitted. Check ' + EMAIL + ' now.', 'ok');
+      log('First time? Look for FormSubmit\'s "confirm your email" message, click the link,'
+        + ' then send once more to get the real report with the screenshot.', 'warn');
+      sendBtn.disabled = false;
+      setTimeout(()=>{ form.remove(); iframe.remove(); }, 1500);
+    };
+    armed = true;
+    form.submit();
+
+    // fallback in case the load event doesn't fire (e.g. framing restrictions)
+    setTimeout(()=>{
+      if(sendBtn.disabled){
+        log('Request sent — check ' + EMAIL + ' (and confirm your address on the first try).', 'ok');
+        sendBtn.disabled = false;
+      }
+    }, 4000);
+  });
+})();
+</script>
+</body>
+</html>
