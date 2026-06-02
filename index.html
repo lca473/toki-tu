@@ -9,9 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap" rel="stylesheet">
 <!-- ── Analytics: GoatCounter (privacy-friendly, cookieless, no personal data) ──
-     1) Create a free site at https://www.goatcounter.com (choose a code, e.g. "tokitu").
-     2) Replace YOURCODE below with your code. Until then nothing is sent and
-        the app still works normally. -->
+     Configured for the "tokitu" site — view stats at https://tokitu.goatcounter.com
+     To use a different GoatCounter site, change the code in the URL below. -->
 <script data-goatcounter="https://tokitu.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <style>
@@ -3576,5 +3575,364 @@ function boot(){
 }
 boot();
 </script>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     FLAG / REPORT-AN-ERROR
+     Paste this entire block immediately before the closing body tag.
+     Works as-is in BOTH index-local.html and index-original-firebase.html.
+
+     One small flag icon rides along on every screen — landing page,
+     grammar, dictionary, flashcards, and every lesson exercise. It
+     captures whatever is on screen, so the report shows you exactly
+     what the user was looking at. Discreet at rest; expands to
+     "Report error" on hover.
+
+     SETUP: edit EMAIL and MODE in the CONFIG section of the <script>.
+       MODE 'mailto'     → no setup. Opens the reporter's email app with all
+                           details prefilled; the screenshot is downloaded so
+                           they attach it in one tap. Nothing leaves your site.
+       MODE 'formsubmit' → fully automatic, free: screenshot + details emailed
+                           to you, no email app. (You've already activated this.)
+       MODE 'emailjs'    → automatic via EmailJS. Free tier sends DETAILS only
+                           (50KB cap); attaching the screenshot needs a paid plan.
+═══════════════════════════════════════════════════════════════════ -->
+<style>
+  /* discreet circular icon; expands to a labelled pill on hover */
+  #tpFlagFab{
+    position:fixed; right:16px;
+    bottom:calc(20px + env(safe-area-inset-bottom));
+    z-index:300; height:48px; width:48px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:999px; cursor:pointer; overflow:hidden; white-space:nowrap;
+    color:#fff; background:var(--accent,#111199); border:none;
+    box-shadow:0 5px 16px rgba(17,17,153,.40);
+    font-family:var(--sans,system-ui,sans-serif); font-weight:700;
+    transition:padding .18s, background .16s, box-shadow .16s, transform .16s;
+  }
+  #tpFlagFab .glyph{ font-size:19px; line-height:1; }
+  #tpFlagFab .label{ display:flex; flex-direction:column; justify-content:center; text-align:left; max-width:0; opacity:0; overflow:hidden; transition:max-width .22s, opacity .15s, margin-left .2s; }
+  #tpFlagFab .label-tp{ font-size:14px; font-weight:700; line-height:1.15; white-space:nowrap; }
+  #tpFlagFab .label-en{ font-size:11px; font-weight:600; line-height:1.1; opacity:.82; white-space:nowrap; }
+  #tpFlagFab:hover, #tpFlagFab:focus-visible{
+    width:auto; padding:0 16px; outline:none;
+    background:var(--accent-soft,#3a3ac0);
+    box-shadow:0 8px 22px rgba(17,17,153,.45); transform:translateY(-1px);
+  }
+  #tpFlagFab:hover .label, #tpFlagFab:focus-visible .label{ max-width:150px; opacity:1; margin-left:9px; }
+  /* during a lesson, lift it above the sticky Check bar */
+  #tpFlagFab.on-runner{ bottom:calc(92px + env(safe-area-inset-bottom)); }
+
+  #tpFlagOverlay{
+    position:fixed; inset:0; z-index:10000; display:none;
+    align-items:center; justify-content:center; padding:20px;
+    background:rgba(17,17,153,.28); backdrop-filter:blur(4px);
+    animation:fadeIn .2s ease-out;
+  }
+  #tpFlagOverlay.show{ display:flex; }
+  #tpFlagCard{
+    width:100%; max-width:430px; background:var(--card,#fffffd);
+    border:1.5px solid var(--line,#c7c7ec); border-radius:var(--radius,14px);
+    box-shadow:0 20px 50px rgba(17,17,153,.25); overflow:hidden;
+    animation:pop .28s ease-out;
+  }
+  #tpFlagCard header{
+    padding:18px 20px 12px; background:var(--paper2,#f6f2c8);
+    border-bottom:1.5px solid var(--line,#c7c7ec);
+  }
+  #tpFlagCard h3{
+    margin:0; font-family:var(--serif,Georgia,serif); font-weight:800;
+    font-size:20px; color:var(--ink,#13136b);
+  }
+  #tpFlagCard .ctx{
+    margin-top:4px; font-size:12.5px; color:var(--ink-dim,#6e6ec0);
+    font-family:var(--mono,monospace);
+  }
+  #tpFlagBody{ padding:16px 20px 20px; }
+  #tpFlagShot{
+    width:100%; max-height:180px; object-fit:cover; object-position:top;
+    border-radius:10px; border:1px solid var(--line-soft,#e2e2f5);
+    margin-bottom:14px; background:var(--paper,#fcfbe4); display:block;
+  }
+  #tpFlagNote{
+    width:100%; min-height:84px; resize:vertical; padding:11px 13px;
+    border-radius:10px; border:1.5px solid var(--line,#c7c7ec);
+    background:var(--paper,#fcfbe4); color:var(--ink,#13136b);
+    font-family:var(--sans,system-ui,sans-serif); font-size:14.5px; line-height:1.4;
+  }
+  #tpFlagNote:focus{ border-color:var(--accent-soft,#3a3ac0); }
+  #tpFlagActions{ display:flex; gap:10px; margin-top:14px; }
+  #tpFlagActions button{
+    flex:1; padding:12px; border-radius:11px; font-weight:700; font-size:15px;
+    font-family:var(--sans,system-ui,sans-serif); cursor:pointer; transition:.15s;
+  }
+  #tpFlagSend{ background:var(--accent,#111199); color:#fff; border:1.5px solid var(--accent,#111199); }
+  #tpFlagSend:hover{ background:var(--accent-soft,#3a3ac0); }
+  #tpFlagSend:disabled{ opacity:.55; cursor:default; }
+  #tpFlagCancel{ background:var(--card,#fffffd); color:var(--ink-soft,#2a2aa0); border:1.5px solid var(--line,#c7c7ec); }
+  #tpFlagCancel:hover{ border-color:var(--accent-soft,#3a3ac0); }
+  #tpFlagToast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:calc(26px + env(safe-area-inset-bottom)); z-index:10001;
+    background:var(--accent,#111199); color:#fff; font-weight:600; font-size:14px;
+    padding:12px 18px; border-radius:999px; box-shadow:0 8px 24px rgba(17,17,153,.3);
+    opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+    font-family:var(--sans,system-ui,sans-serif); max-width:90vw; text-align:center;
+  }
+  #tpFlagToast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+</style>
+
+<button id="tpFlagFab" type="button" aria-label="Report an error on this page">
+  <span class="glyph">&#9873;</span><span class="label"><span class="label-tp">toki e pakala</span><span class="label-en">Report Error</span></span>
+</button>
+
+<div id="tpFlagOverlay" role="dialog" aria-modal="true" aria-labelledby="tpFlagTitle">
+  <div id="tpFlagCard">
+    <header>
+      <h3 id="tpFlagTitle">Spot a mistake?</h3>
+      <div class="ctx" id="tpFlagCtx"></div>
+    </header>
+    <div id="tpFlagBody">
+      <img id="tpFlagShot" alt="Screenshot of what you're seeing">
+      <textarea id="tpFlagNote" placeholder="What looks wrong? e.g. the word X should mean Y… (optional)"></textarea>
+      <div id="tpFlagActions">
+        <button id="tpFlagCancel" type="button">Cancel</button>
+        <button id="tpFlagSend" type="button">Send report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tpFlagToast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function(){
+  /* ─────────────── CONFIG ─────────────── */
+  const EMAIL = 'mijannijo@gmail.com';            // ← your inbox
+  const MODE  = 'formsubmit';                      // 'mailto' | 'formsubmit' | 'emailjs'
+
+  const FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/' + EMAIL;  // used only when MODE==='formsubmit'
+
+  // used only when MODE==='emailjs' — get these from your EmailJS dashboard.
+  const EMAILJS = {
+    publicKey:  'YOUR_PUBLIC_KEY',
+    serviceID:  'YOUR_SERVICE_ID',
+    templateID: 'YOUR_TEMPLATE_ID',
+    attachScreenshot: false      // true needs a paid EmailJS plan + a template attachment var
+  };
+  /* ─────────────────────────────────────── */
+
+  const fab     = document.getElementById('tpFlagFab');
+  const overlay = document.getElementById('tpFlagOverlay');
+  const shotImg = document.getElementById('tpFlagShot');
+  const noteEl  = document.getElementById('tpFlagNote');
+  const ctxEl   = document.getElementById('tpFlagCtx');
+  const sendBtn = document.getElementById('tpFlagSend');
+  const cancelBtn = document.getElementById('tpFlagCancel');
+  const toast   = document.getElementById('tpFlagToast');
+
+  let pngBlob = null, jpgBlob = null;
+
+  const VIEW_NAMES = {
+    'view-home':'Home', 'view-lessons':'Lessons', 'view-runner':'Lesson',
+    'view-dict':'Dictionary', 'view-review':'Flashcards', 'view-grammar':'Grammar'
+  };
+  function currentContext(){
+    const active = document.querySelector('.view.active');
+    const id = active ? active.id : '';
+    return {
+      page: VIEW_NAMES[id] || document.title || 'unknown',
+      url: location.href,
+      time: new Date().toLocaleString(),
+      ua: navigator.userAgent
+    };
+  }
+
+  // Keep the icon clear of the sticky Check bar during a lesson.
+  function syncFabPosition(){
+    const runner = document.getElementById('view-runner');
+    fab.classList.toggle('on-runner', !!(runner && runner.classList.contains('active')));
+  }
+  const mo = new MutationObserver(syncFabPosition);
+  document.querySelectorAll('.view').forEach(v => mo.observe(v, {attributes:true, attributeFilter:['class']}));
+  syncFabPosition();
+
+  function showToast(msg){
+    toast.textContent = msg; toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 2800);
+  }
+  function ensureH2C(){
+    return new Promise((res, rej)=>{
+      if(typeof html2canvas !== 'undefined') return res();
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = res; s.onerror = ()=>rej(new Error('html2canvas failed to load'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function openFlag(){
+    shotImg.style.display = 'block';
+    shotImg.removeAttribute('src');
+    pngBlob = jpgBlob = null;
+    fab.style.visibility = 'hidden';               // keep the button out of the shot
+    try{
+      await ensureH2C();
+      const bg = getComputedStyle(document.body).backgroundColor || '#FCFBE4';
+      const canvas = await html2canvas(document.documentElement, {
+        x: window.scrollX, y: window.scrollY,
+        width: window.innerWidth, height: window.innerHeight,
+        backgroundColor: bg, useCORS: true, logging: false,
+        scale: Math.min(2, window.devicePixelRatio || 1)
+      });
+      shotImg.src = canvas.toDataURL('image/png');
+      pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      jpgBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
+    }catch(err){
+      shotImg.style.display = 'none';               // capture failed → just skip the image
+    }finally{
+      fab.style.visibility = 'visible';
+    }
+    const c = currentContext();
+    ctxEl.textContent = c.page + ' · ' + c.time;
+    overlay.classList.add('show');
+    noteEl.focus();
+  }
+  function closeFlag(){
+    overlay.classList.remove('show');
+    noteEl.value = '';
+  }
+
+  function downloadBlob(blob, name){
+    if(!blob) return;
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u; a.download = name; document.body.appendChild(a); a.click();
+    a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000);
+  }
+
+  function sendViaMailto(c, note, fname){
+    if(pngBlob) downloadBlob(pngBlob, fname);       // reporter attaches this one file
+    const subject = 'toki tu — flagged error on ' + c.page;
+    const body =
+      (note ? note + '\n\n' : '') +
+      '—\nPage: ' + c.page +
+      '\nURL: ' + c.url +
+      '\nTime: ' + c.time +
+      '\nBrowser: ' + c.ua +
+      (pngBlob ? '\n\n[Screenshot "' + fname + '" was just downloaded — please attach it to this email.]' : '');
+    window.location.href = 'mailto:' + encodeURIComponent(EMAIL) +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body='   + encodeURIComponent(body);
+    showToast(pngBlob ? 'Email opened — attach the screenshot & send' : 'Email opened — just hit send');
+    closeFlag();
+  }
+
+  function canInjectFile(){
+    try{ new DataTransfer(); return true; }catch(e){ return false; }
+  }
+
+  function sendViaFormsubmit(c, note, fname){
+    if(!jpgBlob || !canInjectFile()){
+      sendViaMailto(c, note, fname);                // graceful fallback (e.g. Safari)
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.name = 'tpFlagSink'; iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.action = FORMSUBMIT_ENDPOINT; form.method = 'POST';
+    form.enctype = 'multipart/form-data'; form.target = 'tpFlagSink';
+    form.style.display = 'none';
+
+    const add = (n, v)=>{ const i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; form.appendChild(i); };
+    add('_subject', 'toki tu — flagged error on ' + c.page);
+    add('_captcha', 'false');
+    add('_template', 'table');
+    add('Note', note || '(no note)');
+    add('Page', c.page);
+    add('URL', c.url);
+    add('Time', c.time);
+    add('Browser', c.ua);
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.name = 'attachment';
+    const dt = new DataTransfer();
+    dt.items.add(new File([jpgBlob], fname.replace(/\.png$/, '.jpg'), {type:'image/jpeg'}));
+    fileInput.files = dt.files;
+    form.appendChild(fileInput);
+
+    document.body.appendChild(form);
+    iframe.addEventListener('load', ()=>{ setTimeout(()=>{ form.remove(); iframe.remove(); }, 1500); });
+    form.submit();
+    showToast('Thanks — your report was sent');
+    closeFlag();
+  }
+
+  function ensureEmailJS(){
+    return new Promise((res, rej)=>{
+      if(window.emailjs) return res();
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+      s.onload = res; s.onerror = ()=>rej(new Error('EmailJS SDK failed to load'));
+      document.head.appendChild(s);
+    });
+  }
+  function blobToBase64(blob){
+    return new Promise((res, rej)=>{
+      const r = new FileReader();
+      r.onload = ()=> res(String(r.result).split(',')[1]);   // strip "data:...;base64,"
+      r.onerror = rej; r.readAsDataURL(blob);
+    });
+  }
+  async function sendViaEmailjs(c, note, fname){
+    try{
+      await ensureEmailJS();
+      emailjs.init({ publicKey: EMAILJS.publicKey });
+      const params = {
+        page: c.page, url: c.url, time: c.time, browser: c.ua,
+        note: note || '(no note)', to_email: EMAIL
+      };
+      if(EMAILJS.attachScreenshot && jpgBlob){
+        params.screenshot = await blobToBase64(jpgBlob);
+        params.screenshot_name = fname.replace(/\.png$/, '.jpg');
+      }
+      await emailjs.send(EMAILJS.serviceID, EMAILJS.templateID, params);
+      showToast('Thanks — your report was sent');
+      closeFlag();
+    }catch(err){
+      sendViaMailto(c, note, fname);   // graceful fallback if the SDK or send fails
+    }
+  }
+
+  sendBtn.addEventListener('click', ()=>{
+    const c = currentContext();
+    const note = noteEl.value.trim();
+    const fname = 'toki-tu-report-' + Date.now() + '.png';
+    if(MODE === 'formsubmit')   sendViaFormsubmit(c, note, fname);
+    else if(MODE === 'emailjs') sendViaEmailjs(c, note, fname);
+    else                        sendViaMailto(c, note, fname);
+  });
+
+  fab.addEventListener('click', openFlag);
+  cancelBtn.addEventListener('click', closeFlag);
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) closeFlag(); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && overlay.classList.contains('show')) closeFlag(); });
+})();
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PRODUCTION REMINDER (formsubmit mode):
+       Your raw email currently sits in the page source. Swap it for the
+       random FormSubmit alias (the string FormSubmit emailed you when you
+       confirmed) so bots can't scrape your address:
+           const EMAIL = 'mijannijo@gmail.com';            // ← becomes…
+           const FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/abc123yourAlias';
+       (Leave EMAIL as-is for the mailto fallback subject line, and just
+        point FORMSUBMIT_ENDPOINT at the alias.)
+═══════════════════════════════════════════════════════════════════ -->
+
 </body>
 </html>
