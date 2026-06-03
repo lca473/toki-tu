@@ -12,11 +12,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap" rel="stylesheet">
-<!-- ── Analytics: GoatCounter (privacy-friendly, cookieless, no personal data) ──
-     Configured for the "tokitu" site — view stats at https://tokitu.goatcounter.com
-     To use a different GoatCounter site, change the code in the URL below. -->
-<script data-goatcounter="https://tokitu.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
+<!-- Firebase SDK (compat build — same versions used in the Liru app) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 /* ════════════════════════════════════════════════════════════════
    toki tu — a local toki pona trainer
@@ -465,8 +463,29 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
 </head>
 <body>
 
+<!-- ═══════════ LOGIN / ACCOUNT ═══════════ -->
+<div class="view active" id="view-login">
+  <div class="login-screen">
+    <div class="login-card fade-up">
+      <div class="login-logo" aria-label="toki pona logo">
+        <img src="Toki_pona.svg" alt="toki pona logo">
+      </div>
+      <div class="login-title">toki <em>tu</em></div>
+      <div class="login-sub">ilo pi toki pona</div>
+      <div class="brand-gloss">a toki pona trainer</div>
+      <div class="login-msg" id="loginMsg">Pick a username to save your progress to the cloud — then you can pick up on any device.</div>
+      <div class="login-err" id="loginErr"></div>
+      <input class="login-field" id="loginUser" type="text" autocomplete="username" placeholder="Username" maxlength="24" spellcheck="false">
+      <input class="login-field" id="loginPass" type="password" autocomplete="current-password" placeholder="Password (optional)">
+      <button class="login-btn" id="loginBtn" onclick="submitLogin()">Continue</button>
+      <div class="login-cloud-note" id="loginCloudNote"></div>
+      <button class="login-skip" onclick="skipLogin()">Just use this device (no account)</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ HOME ═══════════ -->
-<div class="view active" id="view-home">
+<div class="view" id="view-home">
   <div class="home-head">
     <div class="tp-logo" aria-label="toki pona logo">
       <img src="Toki_pona.svg" alt="toki pona logo">
@@ -500,10 +519,18 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
         <div class="nav-card-arrow">→</div>
       </button>
     </div>
+    <div class="account-bar" id="homeActions">
+      <button class="account-chip" id="accountChip" onclick="openAccount()"><span class="dot" id="accountDot"></span><span id="accountLabel">account</span></button>
+      <button class="home-action" id="renameBtn" onclick="changeUsername()" style="display:none">✎ Rename</button>
+      <span class="account-bar-spacer"></span>
+      <button class="home-action admin" id="adminBtn" onclick="openAdmin()" style="display:none">👁 Admin</button>
+      <button class="home-action logout" id="logoutBtn" onclick="logout()">⎋ Log out</button>
+    </div>
+    <div class="sync-state" id="syncState"></div>
   </div>
   <div class="home-footer">
     Content built from the official <i>pu</i> word list (Sonja Lang, <i>Toki Pona: The Language of Good</i>).<br>
-    This site uses privacy-friendly, cookieless analytics; no personal data is collected.
+    Runs on your device and, when you're signed in, syncs your progress to the cloud.
   </div>
 </div>
 
@@ -605,6 +632,25 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
     <div class="section-head"><h2>How toki pona works</h2><p>Tap any section to expand. Best read in order the first time.</p></div>
     <div class="notice"><b>Good to know:</b> toki pona has very few rules. Word order is fixed and there are no verb tenses or plurals. Meaning comes from context — the same word can be a noun, verb, or adjective depending on where it sits.</div>
     <div class="grammar-body" id="grammarBody"></div>
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN — all users' progress ═══════════ -->
+<div class="view" id="view-admin">
+  <div class="topbar"><div class="topbar-inner">
+    <button class="back-btn" onclick="go('home')">‹ Home</button>
+    <div class="topbar-title">Admin</div>
+    <div class="topbar-spacer"></div>
+  </div></div>
+  <div class="wrap">
+    <div class="section-head"><h2>All learners' progress</h2><p>Everyone signed in to this app, pulled live from the cloud.</p></div>
+    <div class="admin-summary" id="adminSummary"></div>
+    <div class="admin-bar">
+      <input id="adminSearch" class="admin-search" type="text" placeholder="Filter by username…" autocomplete="off" oninput="renderAdminTable()">
+      <button class="admin-refresh" onclick="loadAdmin()">↻ Refresh</button>
+    </div>
+    <div id="adminBody"></div>
+    <div class="admin-note">Totals are read directly from each learner's saved progress. Sorted by lessons completed.</div>
   </div>
 </div>
 
@@ -727,7 +773,6 @@ const WORDS = [
   {w:"toki",pos:"verb/noun",def:"to talk, speak, communicate; language, speech; hello", keys:["talk","speak","say","language","communicate","speech","hello","conversation","word","chat","greet"]},
   {w:"tomo",pos:"noun",     def:"indoor space; house, home, room, building", keys:["house","home","room","building","indoor space","structure","apartment","shelter"]},
   {w:"tu",  pos:"number",   def:"two; to split, divide in two", keys:["two","2","split","divide","pair","couple","both"]},
-  {w:"unpa",pos:"verb/noun",def:"sex, sexuality; to have sex with, sleep with", keys:["sex","sexual","sexuality","intimacy","mate","sleep with","intercourse","reproduce","romance"], note:"A content word from the official word list (pu), defined there as 'to have sexual or marital relations with'."},
   {w:"uta", pos:"noun",     def:"mouth; lips", keys:["mouth","lips","oral","speak with mouth"]},
   {w:"utala",pos:"verb",    def:"to fight, battle, struggle, compete, attack", keys:["fight","battle","struggle","compete","attack","war","conflict","combat","contest"]},
   {w:"walo",pos:"modifier",      def:"white, pale, light-colored", keys:["white","pale","light color","cream","ivory"]},
@@ -752,7 +797,6 @@ const WORDS = [
   {w:"n",   pos:"particle",nonpu:true,def:"hmm, uh, mm (hesitation, thinking, or agreement sound)", keys:["hmm","uh","mm","um","hesitation","thinking","agreement","filler"]},
   {w:"misikeke",pos:"noun",nonpu:true,def:"medicine, medical treatment, cure, remedy", keys:["medicine","medical","treatment","cure","remedy","drug","heal","pharmacy"]},
   {w:"ku",  pos:"noun/verb",nonpu:true,def:"interacting with the Toki Pona Dictionary (lipu ku); to interact with that book", keys:["ku","dictionary","lipu ku","toki pona dictionary","interact"]},
-  {w:"tonsi",pos:"noun",   nonpu:true,def:"non-binary, genderqueer, or trans person; someone whose gender is not (only) man or woman", keys:["non-binary","nonbinary","genderqueer","trans","transgender","gender nonconforming","enby","gender"]},
 
   /* ── compounds (phrases built from official words; not counted in the word total) ── */
   {w:"akesi kiwen",compound:true,def:"turtle", keys:["turtle"]},
@@ -1131,8 +1175,8 @@ const LESSONS = [
     teach:[
       {w:"mi", def:"I, me, we", note:"toki pona doesn't change words for singular vs plural — <span class='tp'>mi</span> means \"I\" or \"we\" depending on context.",ex:["mi pona.","I am good."]},
       {w:"sina", def:"you", note:"Like <span class='tp'>mi</span>, <span class='tp'>sina</span> covers both \"you\" (one person) and \"you all\".",ex:["sina pona.","You are good."]},
-      {w:"ona", def:"he, she, it, they", note:"One word for every third-person pronoun. Context tells you which.",ex:["ona li pona.","They are good."]},
-      {w:"pona", def:"good, simple", note:"<span class='tp'>pona</span> is one of the most-used words — \"good\", \"simple\", \"fix\", even \"hello\" in some phrases.",ex:["ni li pona.","This is good."]},
+      {w:"ona", def:"he, she, it, they", note:"One word for every third-person pronoun. Context tells you which. (The little <span class='tp'>li</span> here is a connector word — you'll learn it in the next lesson.)",ex:["ona li pona.","They are good."]},
+      {w:"pona", def:"good, simple", note:"<span class='tp'>pona</span> is one of the most-used words — \"good\", \"simple\", \"fix\", even \"hello\" in some phrases. (Here <span class='tp'>ni</span> means this — you'll learn it in a later lesson.)",ex:["ni li pona.","This is good."]},
     ],
     drills:[
       {type:"choose", q:"What does <span class='tp'>mi</span> mean?", tp:"mi", correct:"I, me, we", opts:["I, me, we","you","he, she, it","good"]},
@@ -1146,16 +1190,16 @@ const LESSONS = [
   {
     id:2, course:"intro", title:"The li particle", desc:"li, suli, lili, ike", icon:"🔗",
     teach:[
-      {w:"li", def:"(separates subject from verb)", note:"<span class='tp'>li</span> goes between the subject and what it does or is. <b>Important exception:</b> you drop <span class='tp'>li</span> when the subject is exactly <span class='tp'>mi</span> or <span class='tp'>sina</span> alone.",ex:["jan li pona.","The person is good."]},
+      {w:"li", def:"(separates subject from verb)", note:"<span class='tp'>li</span> goes between the subject and what it does or is. <b>Important exception:</b> you drop <span class='tp'>li</span> when the subject is exactly <span class='tp'>mi</span> or <span class='tp'>sina</span> alone.",ex:["ona li pona.","It is good."]},
       {w:"suli", def:"big, important", note:"\"big\", \"large\", \"tall\", or \"important\".",ex:["ona li suli.","It is big."]},
-      {w:"lili", def:"small, little", note:"The opposite of <span class='tp'>suli</span> — \"small\", \"few\", or \"young\".",ex:["ni li lili.","This is small."]},
+      {w:"lili", def:"small, little", note:"The opposite of <span class='tp'>suli</span> — \"small\", \"few\", or \"young\".",ex:["ona li lili.","It is small."]},
       {w:"ike", def:"bad", note:"\"bad\", \"negative\", or \"overly complex\".",ex:["ona li ike.","It is bad."]},
     ],
     drills:[
-      {type:"choose", q:"In <span class='tp'>jan li pona</span>, what does <span class='tp'>li</span> do?", correct:"Separates the subject from the verb", opts:["Separates the subject from the verb","Means \"and\"","Marks the object","Means \"good\""]},
+      {type:"choose", q:"In <span class='tp'>ona li pona</span>, what does <span class='tp'>li</span> do?", correct:"Separates the subject from the verb", opts:["Separates the subject from the verb","Means \"and\"","Marks the object","Means \"good\""]},
       {type:"truefalse", q:"You use <span class='tp'>li</span> after <span class='tp'>mi</span>, as in \"mi li pona\".", correct:"False", note:"Right — drop <span class='tp'>li</span> after a bare <span class='tp'>mi</span> or <span class='tp'>sina</span>. It's just <span class='tp'>mi pona</span>."},
       {type:"choose", q:"What does <span class='tp'>suli</span> mean?", tp:"suli", correct:"big, important", opts:["big, important","small","bad","good"]},
-      {type:"build", q:"Build: \"The person is big.\"", answer:["jan","li","suli"], bank:["jan","li","suli","mi","pona"]},
+      {type:"build", q:"Build: \"It is big.\"", answer:["ona","li","suli"], bank:["ona","li","suli","mi","pona"]},
       {type:"build", q:"Build: \"I am small.\" (remember the li rule!)", answer:["mi","lili"], bank:["mi","li","lili","suli"]},
       {type:"match", pairs:[["suli","big"],["lili","small"],["ike","bad"],["pona","good"]]},
     ]
@@ -1163,7 +1207,7 @@ const LESSONS = [
   {
     id:3, course:"intro", title:"Objects with e", desc:"e, jo, moku, telo", icon:"🍵",
     teach:[
-      {w:"e", def:"(marks the direct object)", note:"<span class='tp'>e</span> comes right before the thing the verb acts on.",ex:["mi moku e kili.","I eat fruit."]},
+      {w:"e", def:"(marks the direct object)", note:"<span class='tp'>e</span> comes right before the thing the verb acts on. (<span class='tp'>kili</span> means fruit or vegetable — you'll learn it in a later lesson.)",ex:["mi moku e kili.","I eat fruit."]},
       {w:"jo", def:"to have, hold, carry", note:"\"to have\", \"hold\", \"contain\", or \"carry\".",ex:["mi jo e telo.","I have water."]},
       {w:"moku", def:"to eat; food", note:"As a verb, \"to eat/drink\"; as a noun, \"food\".",ex:["sina moku.","You eat."]},
       {w:"telo", def:"water, liquid", note:"Any liquid — water, juice, etc.",ex:["telo li pona.","The water is good."]},
@@ -1174,16 +1218,16 @@ const LESSONS = [
       {type:"build", q:"Build: \"You have water.\"", answer:["sina","jo","e","telo"], bank:["sina","jo","e","telo","li"]},
       {type:"choose", q:"<span class='tp'>jo</span> means…", tp:"jo", correct:"to have", opts:["to have","to eat","water","good"]},
       {type:"match", pairs:[["jo","to have"],["moku","food / eat"],["telo","water"],["e","(object)"]]},
-      {type:"build", q:"Build: \"The person has water.\"", answer:["jan","li","jo","e","telo"], bank:["jan","li","jo","e","telo","mi"]},
+      {type:"build", q:"Build: \"The person has water.\"", answer:["jan","li","jo","e","telo"], bank:["jan","li","jo","e","telo","mi"], note:"<span class='tp'>jan</span> means person — you'll learn it in a later lesson."},
     ]
   },
   {
     id:4, course:"intro", title:"Asking questions", desc:"ni, seme, ala, lukin, sona", icon:"❓",
     teach:[
       {w:"ni", def:"this, that", note:"<span class='tp'>ni</span> points at something — \"this\" or \"that\". It can also point at a whole idea. You'll see it a lot, including in questions like \"what is this?\"",ex:["ni li pona.","This is good."]},
-      {w:"seme", def:"what, which", note:"Put <span class='tp'>seme</span> where the unknown thing goes. <span class='tp'>sina pali e seme?</span> = \"You do what?\"",ex:["ni li seme?","What is this?"]},
+      {w:"seme", def:"what, which", note:"Put <span class='tp'>seme</span> where the unknown thing goes. <span class='tp'>sina pali e seme?</span> = \"You do what?\" (<span class='tp'>pali</span> means to do or make — you'll learn it in a later lesson.)",ex:["ni li seme?","What is this?"]},
       {w:"ala", def:"no, not", note:"For yes/no questions, repeat the verb with <span class='tp'>ala</span> between: <span class='tp'>sina pona ala pona?</span> = \"Are you good?\" Answer <span class='tp'>pona</span> (yes) or <span class='tp'>ala</span> (no).",ex:["sina sona ala sona?","Do you know (or not)?"]},
-      {w:"lukin", def:"to see, look, read", note:"\"to look\", \"see\", \"watch\", or \"read\".",ex:["mi lukin e lipu.","I read the book."]},
+      {w:"lukin", def:"to see, look, read", note:"\"to look\", \"see\", \"watch\", or \"read\". (<span class='tp'>lipu</span> means a book or document — you'll learn it in a later lesson.)",ex:["mi lukin e lipu.","I read the book."]},
       {w:"sona", def:"to know; knowledge", note:"\"to know\" or \"understand\".",ex:["mi sona.","I know."]},
     ],
     drills:[
@@ -1200,10 +1244,10 @@ const LESSONS = [
   {
     id:5, course:"intro", title:"Describing things", desc:"Modifiers + colors", icon:"🎨",
     teach:[
-      {w:"(order)", def:"Modifiers come AFTER the word", note:"In toki pona, describing words follow the thing they describe. <span class='tp'>tomo suli</span> = \"big house\" (literally \"house big\"). <span class='tp'>jan pona</span> = \"good person\" → \"friend\".",ex:["tomo lili","a small house"]},
+      {w:"(order)", def:"Modifiers come AFTER the word", note:"In toki pona, describing words follow the thing they describe. <span class='tp'>tomo suli</span> = \"big house\" (literally \"house big\"). <span class='tp'>jan pona</span> = \"good person\" → \"friend\". (<span class='tp'>tomo</span> means a house or building — you'll learn it in a later lesson.)",ex:["tomo lili","a small house"]},
       {w:"loje", def:"red", note:"",ex:["kili loje","red fruit"]},
       {w:"laso", def:"blue, green", note:"toki pona uses one word for blue and green together.",ex:["telo laso","blue water"]},
-      {w:"pimeja", def:"black, dark", note:"",ex:["len pimeja","black cloth"]},
+      {w:"pimeja", def:"black, dark", note:" (<span class='tp'>len</span> means cloth or clothing — you'll learn it in a later lesson.)",ex:["len pimeja","black cloth"]},
     ],
     drills:[
       {type:"choose", q:"How do you say \"big house\"?", correct:"tomo suli", opts:["tomo suli","suli tomo","tomo li suli","tomo e suli"], tpOpts:true},
@@ -1252,7 +1296,7 @@ const LESSONS = [
     id:8, course:"intro", title:"Commands & feelings", desc:"o, wile, olin, pilin", icon:"💗",
     teach:[
       {w:"o", def:"(command / addressing)", note:"<span class='tp'>o</span> before a verb makes a command: <span class='tp'>o moku!</span> = \"eat!\" After a name, it's how you address someone: <span class='tp'>jan Mali o!</span> = \"Hey Mary!\"",ex:["o pona!","Be good! / Take care!"]},
-      {w:"wile", def:"to want, need; must", note:"\"want\", \"need\", or \"must\". Followed directly by another verb: <span class='tp'>mi wile moku</span> = \"I want to eat\".",ex:["mi wile lape.","I want to sleep."]},
+      {w:"wile", def:"to want, need; must", note:"\"want\", \"need\", or \"must\". Followed directly by another verb: <span class='tp'>mi wile moku</span> = \"I want to eat\". (<span class='tp'>lape</span> means to sleep — you'll learn it in a later lesson.)",ex:["mi wile lape.","I want to sleep."]},
       {w:"olin", def:"to love", note:"Deep love, respect, or compassion.",ex:["mi olin e sina.","I love you."]},
       {w:"pilin", def:"to feel; heart", note:"\"to feel\" or \"feelings/heart\". <span class='tp'>pilin pona</span> = \"feel good / happy\".",ex:["mi pilin pona.","I feel good."]},
     ],
@@ -1268,8 +1312,8 @@ const LESSONS = [
   {
     id:9, course:"intro", title:"The la & pi particles", desc:"la, pi, tenpo, nasin", icon:"🧩",
     teach:[
-      {w:"la", def:"(context / if-when)", note:"<span class='tp'>la</span> attaches a context phrase to the front of a sentence. <span class='tp'>tenpo suno ni la, mi pali</span> = \"Today, I work.\" It can mean \"if\", \"when\", or \"as for…\".",ex:["sina kama la, mi pilin pona.","If you come, I feel good."]},
-      {w:"pi", def:"(regroups modifiers)", note:"<span class='tp'>pi</span> isn't really a word with a meaning — it's a grouping tool. It makes a modifier apply to a whole phrase instead of just the word before it. <span class='tp'>tomo pi telo nasa</span> = \"house of crazy-water\" → \"bar\". It often translates as \"of\" in English, but that's just a convenient translation, not its meaning. Only use <span class='tp'>pi</span> when there are 2+ modifier words.",ex:["jan pi sona mute","person of much knowledge"]},
+      {w:"la", def:"(context / if-when)", note:"<span class='tp'>la</span> attaches a context phrase to the front of a sentence. <span class='tp'>tenpo suno ni la, mi pali</span> = \"Today, I work.\" It can mean \"if\", \"when\", or \"as for…\". (Here <span class='tp'>suno</span> means sun or day, and <span class='tp'>kama</span> means to come — both are taught in later lessons.)",ex:["sina kama la, mi pilin pona.","If you come, I feel good."]},
+      {w:"pi", def:"(regroups modifiers)", note:"<span class='tp'>pi</span> isn't really a word with a meaning — it's a grouping tool. It makes a modifier apply to a whole phrase instead of just the word before it. <span class='tp'>tomo pi telo nasa</span> = \"house of crazy-water\" → \"bar\". It often translates as \"of\" in English, but that's just a convenient translation, not its meaning. Only use <span class='tp'>pi</span> when there are 2+ modifier words. (<span class='tp'>nasa</span> means silly or strange — you'll learn it in a later lesson.)",ex:["jan pi sona mute","person of much knowledge"]},
       {w:"tenpo", def:"time", note:"\"time\", \"moment\", \"period\". Combine it to talk about parts of the day: <span class='tp'>tenpo suno</span> = \"day\" (sun-time); <span class='tp'>tenpo pimeja</span> = \"night\" (dark-time). Add <span class='tp'>ni</span> (\"this\", from earlier) to point at the current one: <span class='tp'>tenpo suno ni</span> = \"this day\" → <b>today</b>.",ex:["tenpo suno ni la, mi pali.","Today, I work."]},
       {w:"nasin", def:"way, path, method", note:"\"way\", \"road\", \"method\", or \"custom\".",ex:["nasin pona","a good way"]},
     ],
@@ -1323,7 +1367,7 @@ const LESSONS = [
       {w:"lawa", def:"head; to lead", note:"As a noun, \"head\" or \"mind\". As a verb, \"to lead, control, guide\". <span class='tp'>jan lawa</span> = \"leader\" (head-person).",ex:["lawa mi li pona.","My head is fine."]},
       {w:"luka", def:"hand, arm", note:"\"hand\" or \"arm\". It's also the traditional word for the number five (five fingers).",ex:["luka mi li suli.","My arms are big."]},
       {w:"noka", def:"leg, foot", note:"\"leg\" or \"foot\" — the lower limbs.",ex:["noka li tawa.","The legs move."]},
-      {w:"uta", def:"mouth", note:"\"mouth\" or \"lips\" — used for eating, speaking, kissing.",ex:["uta li open.","The mouth opens."]},
+      {w:"uta", def:"mouth", note:"\"mouth\" or \"lips\" — used for eating, speaking, kissing. (<span class='tp'>open</span> means to open or begin — you'll learn it in a later lesson.)",ex:["uta li open.","The mouth opens."]},
     ],
     drills:[
       {type:"choose", q:"<span class='tp'>luka</span> means…", tp:"luka", correct:"hand, arm", opts:["hand, arm","leg, foot","head","mouth"]},
@@ -1339,8 +1383,8 @@ const LESSONS = [
     teach:[
       {w:"sijelo", def:"body", note:"\"body\" or physical condition. <span class='tp'>sijelo pona</span> = \"healthy\" (good-body).",ex:["sijelo mi li pona.","My body is well."]},
       {w:"insa", def:"inside, center", note:"\"inside\", \"inner part\", \"center\" — also the stomach or guts.",ex:["insa tomo","inside the house"]},
-      {w:"monsi", def:"back, rear", note:"\"back\" or \"behind\" — the rear of something.",ex:["monsi mi li pakala.","My back is hurt."]},
-      {w:"sinpin", def:"front, face", note:"\"front\", \"face\", or a vertical surface like a wall or chest.",ex:["sinpin mi li suwi.","My face is cute."]},
+      {w:"monsi", def:"back, rear", note:"\"back\" or \"behind\" — the rear of something. (<span class='tp'>pakala</span> means broken or hurt — you'll learn it in a later lesson.)",ex:["monsi mi li pakala.","My back is hurt."]},
+      {w:"sinpin", def:"front, face", note:"\"front\", \"face\", or a vertical surface like a wall or chest. (<span class='tp'>suwi</span> means sweet or cute — you'll learn it in a later lesson.)",ex:["sinpin mi li suwi.","My face is cute."]},
     ],
     drills:[
       {type:"choose", q:"<span class='tp'>insa</span> means…", tp:"insa", correct:"inside, center", opts:["inside, center","back","front","body"]},
@@ -1355,9 +1399,9 @@ const LESSONS = [
     id:14, course:"foundational", title:"Animals", desc:"soweli, waso, kala, akesi", icon:"🐾",
     teach:[
       {w:"soweli", def:"animal (esp. mammal)", note:"\"animal\", especially a cute land mammal — a dog, cat, bear, etc.",ex:["soweli li suli.","The animal is big."]},
-      {w:"waso", def:"bird", note:"\"bird\" or any flying creature.",ex:["waso li tawa sewi.","The bird goes up."]},
+      {w:"waso", def:"bird", note:"\"bird\" or any flying creature. (<span class='tp'>sewi</span> means high or up — you'll learn it in a later lesson.)",ex:["waso li tawa sewi.","The bird goes up."]},
       {w:"kala", def:"fish", note:"\"fish\" or any sea creature.",ex:["kala li lon telo.","The fish is in the water."]},
-      {w:"akesi", def:"reptile, amphibian", note:"The \"non-cute\" animals — reptiles and amphibians like snakes, lizards, and frogs. (Just a category, not an insult!)",ex:["akesi li lete.","The reptile is cold."]},
+      {w:"akesi", def:"reptile, amphibian", note:"The \"non-cute\" animals — reptiles and amphibians like snakes, lizards, and frogs. (Just a category, not an insult!) (<span class='tp'>lete</span> means cold — you'll learn it in a later lesson.)",ex:["akesi li lete.","The reptile is cold."]},
     ],
     drills:[
       {type:"choose", q:"<span class='tp'>waso</span> means…", tp:"waso", correct:"bird", opts:["bird","fish","reptile","mammal"]},
@@ -1407,7 +1451,7 @@ const LESSONS = [
     teach:[
       {w:"poki", def:"container, box", note:"\"container\" — a box, bowl, cup, bag, or bottle. Anything that holds something.",ex:["telo li lon poki.","The water is in the cup."]},
       {w:"lape", def:"to sleep, rest", note:"\"to sleep\" or \"rest\". <span class='tp'>tomo lape</span> = \"bedroom\" (sleep-room).",ex:["mi wile lape.","I want to sleep."]},
-      {w:"kepeken", def:"to use; using", note:"A preposition: \"using\" or \"with (a tool)\". It attaches the means of doing something, without <span class='tp'>e</span>. <span class='tp'>mi moku kepeken luka</span> = \"I eat using my hand.\"",ex:["mi pali kepeken ilo.","I work using a tool."]},
+      {w:"kepeken", def:"to use; using", note:"A preposition: \"using\" or \"with (a tool)\". It attaches the means of doing something, without <span class='tp'>e</span>. <span class='tp'>mi moku kepeken luka</span> = \"I eat using my hand.\" (<span class='tp'>ilo</span> means a tool or machine — you'll learn it in a later lesson.)",ex:["mi pali kepeken ilo.","I work using a tool."]},
     ],
     drills:[
       {type:"choose", q:"<span class='tp'>kepeken</span> means…", tp:"kepeken", correct:"to use; using", opts:["to use; using","to sleep","container","to hold"]},
@@ -1439,7 +1483,7 @@ const LESSONS = [
     id:19, course:"foundational", title:"Earth & substances", desc:"kiwen, ko, kon, ma", icon:"🪨",
     teach:[
       {w:"kiwen", def:"hard object; rock, metal", note:"\"rock\", \"stone\", \"metal\" — any hard, solid object.",ex:["kiwen li suli.","The rock is big."]},
-      {w:"ko", def:"paste, powder, goo", note:"Semi-solid stuff — clay, paste, powder, dough, goo.",ex:["ko li jaki.","The goo is gross."]},
+      {w:"ko", def:"paste, powder, goo", note:"Semi-solid stuff — clay, paste, powder, dough, goo. (<span class='tp'>jaki</span> means gross or dirty — you'll learn it in a later lesson.)",ex:["ko li jaki.","The goo is gross."]},
       {w:"kon", def:"air, breath; spirit", note:"\"air\", \"breath\", \"gas\" — and more abstractly, \"essence\" or \"spirit\".",ex:["kon li pona.","The air is good."]},
       {w:"ma", def:"land, country", note:"A reminder: <span class='tp'>ma</span> is \"land\", \"earth\", \"country\", or \"outdoors\".",ex:["ma li suli.","The land is big."]},
     ],
@@ -1506,7 +1550,7 @@ const LESSONS = [
     id:23, course:"foundational", title:"Doing & becoming", desc:"pali, open, pini, kama", icon:"🔨",
     teach:[
       {w:"pali", def:"to do, make, work", note:"\"to do\", \"make\", \"work on\", or \"build\".",ex:["mi pali e tomo.","I build a house."]},
-      {w:"open", def:"to open, begin", note:"\"to open\", \"begin\", \"start\", or \"turn on\".",ex:["mi open e lupa.","I open the door."]},
+      {w:"open", def:"to open, begin", note:"\"to open\", \"begin\", \"start\", or \"turn on\". (<span class='tp'>lupa</span> means a hole or door — you'll learn it in a later lesson.)",ex:["mi open e lupa.","I open the door."]},
       {w:"pini", def:"to end, finish; past", note:"\"to end\" or \"finish\". As an adjective, \"finished\" or \"past\". <span class='tp'>tenpo pini</span> = \"the past\".",ex:["mi pini e pali.","I finish the work."]},
       {w:"kama", def:"to come, become", note:"\"to come\", \"arrive\", or \"become\". Before another verb it means an action is starting: <span class='tp'>mi kama sona</span> = \"I come-to-know\" → \"I learn\".",ex:["mi kama.","I come / I arrive."]},
     ],
@@ -1574,7 +1618,7 @@ const LESSONS = [
     teach:[
       {w:"ilo sona", def:"computer (knowledge-tool)", note:"There are no official words for modern tech — speakers combine existing words, and these are common conventions. <span class='tp'>ilo sona</span> = \"knowledge-tool\" → computer.",ex:["ilo sona mi li suli.","My computer is big."]},
       {w:"ilo toki", def:"phone (talk-tool)", note:"<span class='tp'>ilo toki</span> = \"talk-tool\" → phone. You can add <span class='tp'>lili</span> for a mobile: <span class='tp'>ilo toki lili</span>.",ex:["mi jo e ilo toki.","I have a phone."]},
-      {w:"(internet & AI)", def:"Describing the web and AI", note:"The internet is often <span class='tp'>linja sona</span> (\"knowledge-line/web\") or <span class='tp'>ma sona</span> (\"knowledge-land\"). An AI might be <span class='tp'>ilo sona</span> or <span class='tp'>ilo pi sona musi</span>. These aren't fixed — toki pona invites you to describe, not label.",ex:["linja sona","the internet (knowledge-web)"]},
+      {w:"(internet & AI)", def:"Describing the web and AI", note:"The internet is often <span class='tp'>linja sona</span> (\"knowledge-line/web\") or <span class='tp'>ma sona</span> (\"knowledge-land\"). An AI might be <span class='tp'>ilo sona</span> or <span class='tp'>ilo pi sona musi</span>. These aren't fixed — toki pona invites you to describe, not label. (Here <span class='tp'>linja</span> means a line or string, and <span class='tp'>musi</span> means fun or playful — both are taught in later lessons.)",ex:["linja sona","the internet (knowledge-web)"]},
     ],
     drills:[
       {type:"choose", q:"<span class='tp'>ilo sona</span> (\"knowledge-tool\") most likely means…", correct:"computer", opts:["computer","phone","calculator","TV"]},
@@ -2093,17 +2137,54 @@ const GRAMMAR = [
 ];
 
 /* ════════════════════════════════════════════════════════════════
-   STATE & PERSISTENCE  (local-only)
+   FIREBASE CONFIG
    ────────────────────────────────────────────────────────────────
-   • Progress (state) and flashcards (srs) live in this browser's
-     localStorage. There is no account and no server — each device
-     keeps its own copy.
+   Firebase web API keys are PUBLIC by design — security is enforced
+   by the database rules in the Firebase console, not by key secrecy.
+   It is safe to commit this to a public GitHub repo.
+
+   ▶▶ PASTE YOUR OWN firebaseConfig OBJECT FROM THE FIREBASE CONSOLE
+      OVER THE PLACEHOLDER BELOW. (Setup guide is in the chat.)
+═══════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDxohEDO38OtmH3zfJrhXb_Ps8kA5jJZqc",
+  authDomain: "toki-pona-34adf.firebaseapp.com",
+  databaseURL: "https://toki-pona-34adf-default-rtdb.firebaseio.com",
+  projectId: "toki-pona-34adf",
+  storageBucket: "toki-pona-34adf.firebasestorage.app",
+  messagingSenderId: "116234463173",
+  appId: "1:116234463173:web:b1522a2460b7ea74740dac"
+};
+
+let db = null;
+let firebaseReady = false;
+try {
+  if (typeof firebase !== "undefined" && firebase.initializeApp && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    firebaseReady = true;
+  }
+} catch(e){ console.warn("Firebase init failed:", e); }
+
+/* ════════════════════════════════════════════════════════════════
+   STATE & PERSISTENCE  (local-first, with optional cloud sync)
+   ────────────────────────────────────────────────────────────────
+   • Progress (state) and flashcards (srs) always live in localStorage.
+   • When the user is signed in, every save also pushes to Firebase,
+     and on login we pull the cloud copy and merge it in.
 ═══════════════════════════════════════════════════════════════ */
 const SAVE_KEY = "sonaPonaProgress_v1";
 const SRS_KEY = "sonaPonaSRS_v1";
 const USER_KEY = "sonaPonaUser_v1";
 
-// No accounts in this build — each browser keeps its own local progress.
+/* Usernames allowed to see the Admin (all-users progress) screen.
+   Compared case-insensitively. Add or remove names here. */
+const ADMIN_USERS = ["admin"];
+function isAdmin(name){
+  return !!name && ADMIN_USERS.map(u=>u.toLowerCase()).includes(String(name).toLowerCase());
+}
+
+// the signed-in username ("" = playing as a local-only guest)
 let username = "";
 function fbKey(u){ return String(u).replace(/[.#$\/\[\]]/g,"_"); }
 
@@ -2149,6 +2230,7 @@ function clampStreak(s){
 }
 function saveState(){
   try{ localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state)); }catch(e){}
+  cloudSave();
 }
 function loadSRS(){
   try{
@@ -2176,23 +2258,434 @@ function migrateCardData(data){
 }
 function saveSRS(){
   try{ localStorage.setItem(keyFor(SRS_KEY), JSON.stringify(srs)); }catch(e){}
+  cloudSave();
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ANALYTICS  (anonymous, aggregate — GoatCounter)
-   ───────────────────────────────────────────────────────────────
-   No accounts, no IDs, no personal data: we send a "count" event when a
-   learner reaches a milestone (finishes a lesson, a course, or a review
-   session) so the owner can see in aggregate how many people use the app
-   and how far they get. No-op until GoatCounter is configured. */
-function track(path, title){
+/* ── CLOUD SYNC ──────────────────────────────────────────────────
+   All of a user's data lives under  users/<key>/  as:
+     { state:{...}, srs:{cards:{...}}, updatedAt:<ms> }
+   We debounce writes so a burst of saves becomes one network call. */
+let cloudSaveTimer = null;
+function setSyncState(txt){
+  const el = document.getElementById('syncState');
+  if(el) el.textContent = txt;
+}
+function cloudSave(){
+  if(!firebaseReady || !db || !username) return;
+  setSyncState("saving…");
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(()=>{
+    db.ref("users/"+fbKey(username)).update({
+      state: state,
+      srs: srs,
+      updatedAt: Date.now()
+    })
+    .then(()=> setSyncState("✓ saved to cloud"))
+    .catch(e=>{ console.warn("Firebase save error:", e); setSyncState("offline — saved on this device"); });
+  }, 600);
+}
+
+// Pull the cloud copy for this user. Returns {state, srs} or null.
+async function cloudPull(user){
+  if(!firebaseReady || !db || !user) return null;
   try{
-    if(window.goatcounter && typeof window.goatcounter.count === 'function'){
-      window.goatcounter.count({ path: path, title: title || path, event: true });
+    const snap = await db.ref("users/"+fbKey(user)).once("value");
+    if(snap.exists()) return snap.val();
+  }catch(e){ console.warn("Firebase load error:", e); }
+  return null;
+}
+
+// Merge a cloud snapshot into local state+srs. Cloud is treated as the
+// source of truth for "have I completed this lesson" and for which cards
+// exist; for XP/streak we keep whichever is larger so progress never
+// goes backwards after playing offline on a second device.
+function mergeCloud(cloud){
+  if(!cloud) return;
+  if(cloud.state){
+    const c = cloud.state;
+    state.completed = Array.from(new Set([...(state.completed||[]), ...(c.completed||[])]));
+    state.xp = Math.max(state.xp||0, c.xp||0);
+    // Reconcile the streak triple (streak / lastDay / streakStart). The
+    // record with the more recent lastDay wins; on a tie, keep the larger
+    // streak so offline play on a second device isn't lost. clampStreak
+    // (below) then validates the result against the real elapsed days.
+    const localLast = state.lastDay ? dayToMs(state.lastDay) : -Infinity;
+    const cloudLast = c.lastDay     ? dayToMs(c.lastDay)     : -Infinity;
+    if(cloudLast > localLast){
+      state.streak      = c.streak || 0;
+      state.lastDay     = c.lastDay;
+      state.streakStart = c.streakStart || null;
+    } else if(cloudLast === localLast && cloudLast !== -Infinity){
+      if((c.streak||0) > (state.streak||0)){
+        state.streak = c.streak || 0;
+      }
+      // keep the earliest known start for this shared lastDay
+      if(c.streakStart && (!state.streakStart || dayToMs(c.streakStart) < dayToMs(state.streakStart))){
+        state.streakStart = c.streakStart;
+      }
     }
+    // else: local lastDay is newer → keep local streak/lastDay/streakStart
+  }
+  if(cloud.srs && cloud.srs.cards){
+    // adopt every cloud card; for cards in both, keep the one reviewed most recently
+    const cc = cloud.srs.cards;
+    Object.keys(cc).forEach(w=>{
+      const local = srs.cards[w];
+      if(!local){ srs.cards[w] = cc[w]; }
+      else {
+        const cloudNewer = (cc[w].due||0) >= (local.due||0);
+        srs.cards[w] = cloudNewer ? cc[w] : local;
+      }
+    });
+  }
+  // validate the merged streak against actual elapsed days before persisting
+  clampStreak(state);
+  // Cloud cards can carry labels saved before a dictionary edit (e.g. the
+  // adj→modifier re-tagging). Re-sync the merged result so adopted cloud cards
+  // match the current dictionary too. finishLogin's cloudSave() then writes
+  // this corrected copy back, healing the cloud record permanently.
+  migrateCardData(srs);
+  try{
+    localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state));
+    localStorage.setItem(keyFor(SRS_KEY), JSON.stringify(srs));
   }catch(e){}
 }
 
+/* ── ACCOUNT / LOGIN ─────────────────────────────────────────────
+   Username-only by default. An OPTIONAL password adds a light guard
+   so a stranger can't load your data just by guessing your name.
+   This is convenience, NOT real security — see the README. */
+async function submitLogin(){
+  const errEl = document.getElementById('loginErr');
+  const btn   = document.getElementById('loginBtn');
+  errEl.textContent = "";
+  const name = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(!name){ errEl.textContent = "Please enter a username."; return; }
+  if(name.length < 2){ errEl.textContent = "Username must be at least 2 characters."; return; }
+
+  btn.disabled = true; btn.textContent = "Connecting…";
+
+  if(firebaseReady && db){
+    try{
+      const k = fbKey(name);
+      // Check for an existing stored password on this account.
+      const pwSnap = await db.ref("passwords/"+k).once("value");
+      const stored = pwSnap.exists() ? pwSnap.val() : null;
+      if(stored){
+        if(pass !== stored){
+          errEl.textContent = "Wrong password for that username.";
+          btn.disabled = false; btn.textContent = "Continue"; return;
+        }
+      } else if(pass){
+        // first time + a password given → claim it for this username
+        await db.ref("passwords/"+k).set(pass);
+      }
+    }catch(e){
+      console.warn("Login check failed:", e);
+      // fall through — let them in as a local user if the network is down
+    }
+  }
+
+  await finishLogin(name);
+}
+
+async function finishLogin(name){
+  username = name;
+  try{ localStorage.setItem(USER_KEY, name); }catch(e){}
+  // reload local data scoped to this username, then merge the cloud copy
+  state = loadState();
+  srs = loadSRS();
+  const cloud = await cloudPull(name);
+  if(cloud){ mergeCloud(cloud); }
+  // a fresh login also writes back the merged result
+  cloudSave();
+  const btn = document.getElementById('loginBtn');
+  if(btn){ btn.disabled = false; btn.textContent = "Continue"; }
+  enterApp();
+}
+
+function skipLogin(){
+  username = "";
+  state = loadState();
+  srs = loadSRS();
+  enterApp();
+}
+
+function enterApp(){
+  updateAccountChip();
+  go('home');
+}
+
+function updateAccountChip(){
+  const dot = document.getElementById('accountDot');
+  const label = document.getElementById('accountLabel');
+  if(!label) return;
+  if(username){
+    label.textContent = username;
+    dot.className = "dot" + (firebaseReady ? "" : " off");
+  } else {
+    label.textContent = "Sign in to sync";
+    dot.className = "dot off";
+  }
+  // logout button only makes sense when signed in; admin button only for admins
+  const logoutBtn = document.getElementById('logoutBtn');
+  const adminBtn = document.getElementById('adminBtn');
+  const renameBtn = document.getElementById('renameBtn');
+  if(logoutBtn) logoutBtn.style.display = username ? '' : 'none';
+  if(renameBtn) renameBtn.style.display = username ? '' : 'none';
+  if(adminBtn) adminBtn.style.display = isAdmin(username) ? '' : 'none';
+}
+
+function openAccount(){
+  if(username){
+    if(confirm("Signed in as \""+username+"\".\n\nSign out? Your progress stays saved in the cloud and you can sign back in anytime.")){
+      logout();
+    }
+  } else {
+    // go back to the login screen
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-login').classList.add('active');
+    window.scrollTo(0,0);
+  }
+}
+
+function logout(){
+  username = "";
+  try{ localStorage.removeItem(USER_KEY); }catch(e){}
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-login').classList.add('active');
+  document.getElementById('loginUser').value = "";
+  document.getElementById('loginPass').value = "";
+  const btn = document.getElementById('loginBtn');
+  if(btn){ btn.disabled = false; btn.textContent = "Continue"; }
+  const errEl = document.getElementById('loginErr');
+  if(errEl) errEl.textContent = "";
+  setSyncState("");
+}
+
+/* Change the signed-in user's username, carrying their progress,
+   flashcards, and stored password across to the new name. Local-first:
+   when the cloud is connected the data is moved there too — the NEW
+   location is written BEFORE the old one is removed, so an error partway
+   through never loses anything. */
+async function changeUsername(){
+  if(!username){
+    alert("You're playing as a guest, so there's no account name to change yet. Use the account button to sign in or pick a username first.");
+    return;
+  }
+  const oldName = username;
+
+  let next = prompt(`Signed in as "${oldName}".\n\nEnter a new username:`, oldName);
+  if(next === null) return;                 // cancelled
+  next = next.trim();
+
+  if(next === oldName) return;              // unchanged
+  if(next.length < 2){ alert("Username must be at least 2 characters."); return; }
+  if(next.length > 24){ alert("Username must be 24 characters or fewer."); return; }
+
+  const oldKey = fbKey(oldName);
+  const newKey = fbKey(next);
+
+  // Different spelling but the same storage key (e.g. only the case changed,
+  // or characters that sanitise identically) → just relabel, no data moves.
+  if(newKey === oldKey){
+    username = next;
+    try{ localStorage.setItem(USER_KEY, next); }catch(e){}
+    updateAccountChip();
+    setSyncState("✓ renamed to "+next);
+    return;
+  }
+
+  // ── move cloud data, if connected ──
+  if(firebaseReady && db){
+    setSyncState("renaming…");
+    try{
+      // Don't clobber a different person's account.
+      const [uSnap, pSnap] = await Promise.all([
+        db.ref("users/"+newKey).once("value"),
+        db.ref("passwords/"+newKey).once("value")
+      ]);
+      if(uSnap.exists() || pSnap.exists()){
+        alert(`The username "${next}" is already taken. Please pick another.`);
+        setSyncState("");
+        return;
+      }
+      // Carry the password over first (if one was set), then the data,
+      // writing the new node before deleting the old one.
+      const pwOld = await db.ref("passwords/"+oldKey).once("value");
+      if(pwOld.exists()) await db.ref("passwords/"+newKey).set(pwOld.val());
+      await db.ref("users/"+newKey).set({ state: state, srs: srs, updatedAt: Date.now() });
+      await db.ref("users/"+oldKey).remove();
+      await db.ref("passwords/"+oldKey).remove();
+    }catch(e){
+      console.warn("Rename failed:", e);
+      const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
+      alert(perm
+        ? "Rename denied by Firebase — your database rules don't allow writing under users/ or passwords/ for the new name."
+        : `Couldn't rename to "${next}": ${(e && e.message) || 'unknown error'}`);
+      setSyncState("");
+      return;                               // abort; everything stays on the old name
+    }
+  }
+
+  // ── move local data ──
+  username = next;                          // keyFor() now resolves to the new name
+  try{ localStorage.setItem(USER_KEY, next); }catch(e){}
+  try{
+    localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state));
+    localStorage.setItem(keyFor(SRS_KEY),  JSON.stringify(srs));
+    localStorage.removeItem(SAVE_KEY+"__"+oldKey);
+    localStorage.removeItem(SRS_KEY +"__"+oldKey);
+  }catch(e){}
+
+  updateAccountChip();
+  setSyncState("✓ renamed to "+next);
+  alert(`Done — you're now "${next}". Your progress and flashcards came with you.`);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADMIN — view every signed-in learner's progress (read-only)
+   Pulls the whole  users/  node from Firebase. Visible only to
+   usernames listed in ADMIN_USERS.
+═══════════════════════════════════════════════════════════════ */
+let adminData = [];   // [{user, completed, xp, streak, cards, updatedAt}]
+
+function openAdmin(){
+  if(!isAdmin(username)){ alert("This area is for admins only."); return; }
+  go('admin');
+}
+
+async function loadAdmin(){
+  const body = document.getElementById('adminBody');
+  if(!isAdmin(username)){ body.innerHTML = `<div class="admin-empty">This area is for admins only.</div>`; return; }
+  if(!firebaseReady || !db){
+    body.innerHTML = `<div class="admin-empty">Cloud sync isn't connected, so there's no shared progress to show.<br>Admin needs Firebase to be configured.</div>`;
+    document.getElementById('adminSummary').innerHTML = '';
+    return;
+  }
+  body.innerHTML = `<div class="admin-empty">Loading learners…</div>`;
+  try{
+    const snap = await db.ref("users").once("value");
+    const all = snap.exists() ? snap.val() : {};
+    adminData = Object.keys(all).map(key=>{
+      const rec = all[key] || {};
+      const st = rec.state || {};
+      const cards = (rec.srs && rec.srs.cards) ? Object.keys(rec.srs.cards).length : 0;
+      return {
+        user: key,
+        completed: Array.isArray(st.completed) ? st.completed.length : 0,
+        xp: st.xp || 0,
+        streak: st.streak || 0,
+        cards,
+        updatedAt: rec.updatedAt || 0
+      };
+    });
+    renderAdminTable();
+  }catch(e){
+    console.warn("Admin load failed:", e);
+    const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
+    body.innerHTML = perm
+      ? `<div class="admin-empty"><b>Permission denied by Firebase.</b><br>
+          Your database rules don't allow reading the whole <code>users/</code> node.<br>
+          See the note below for the rule you need to add.</div>`
+      : `<div class="admin-empty">Couldn't load learner data.<br>
+          <span style="font-size:12px">${escapeHTML((e && e.message) || 'Unknown error')}</span></div>`;
+    document.getElementById('adminSummary').innerHTML = '';
+  }
+}
+
+function renderAdminTable(){
+  const body = document.getElementById('adminBody');
+  const summaryEl = document.getElementById('adminSummary');
+  const totalLessons = LESSONS.length;
+
+  // summary across all learners
+  const learners = adminData.length;
+  const totalXP = adminData.reduce((s,d)=>s+d.xp, 0);
+  const activeStreaks = adminData.filter(d=>d.streak>0).length;
+  summaryEl.innerHTML = `
+    <div class="chip"><div class="n">${learners}</div><div class="l">learners</div></div>
+    <div class="chip"><div class="n">${totalXP.toLocaleString()}</div><div class="l">total XP</div></div>
+    <div class="chip"><div class="n">${activeStreaks}</div><div class="l">on a streak</div></div>`;
+
+  const q = (document.getElementById('adminSearch').value || '').trim().toLowerCase();
+  let rows = adminData.slice();
+  if(q) rows = rows.filter(d=>d.user.toLowerCase().includes(q));
+  rows.sort((a,b)=> b.completed - a.completed || b.xp - a.xp);
+
+  if(rows.length===0){
+    body.innerHTML = `<div class="admin-empty">${adminData.length===0 ? 'No learners have signed in yet.' : 'No learners match that filter.'}</div>`;
+    return;
+  }
+
+  const fmtDate=(ms)=> ms ? new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—';
+  body.innerHTML = `
+    <table class="admin-table">
+      <thead><tr>
+        <th>Learner</th><th>Lessons</th><th>Progress</th>
+        <th>XP</th><th>Streak</th><th>Cards</th><th>Last active</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(d=>{
+          const pct = totalLessons ? Math.round((d.completed/totalLessons)*100) : 0;
+          const protectedRow = isAdmin(d.user) || d.user.toLowerCase()===String(username).toLowerCase();
+          const delCell = protectedRow
+            ? `<td class="del"><span class="del-protected" title="Admin accounts can't be deleted here">—</span></td>`
+            : `<td class="del"><button class="del-btn" onclick="deleteUser('${escapeAttr(d.user)}')">Delete</button></td>`;
+          return `<tr>
+            <td class="u">${escapeHTML(d.user)}</td>
+            <td>${d.completed}/${totalLessons}</td>
+            <td><div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div></td>
+            <td>${d.xp.toLocaleString()}</td>
+            <td>${d.streak>0?('🔥 '+d.streak):'—'}</td>
+            <td>${d.cards}</td>
+            <td>${fmtDate(d.updatedAt)}</td>
+            ${delCell}
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* Delete a learner's account from the cloud. Destructive + permanent, so
+   it requires the admin to type the exact username to confirm. Admin
+   accounts (and your own) can't be deleted from here. */
+async function deleteUser(user){
+  if(!isAdmin(username)){ alert("This area is for admins only."); return; }
+  if(isAdmin(user) || user.toLowerCase()===String(username).toLowerCase()){
+    alert("Admin accounts can't be deleted here.");
+    return;
+  }
+  if(!firebaseReady || !db){ alert("Cloud isn't connected — nothing to delete."); return; }
+
+  const typed = prompt(
+    `Permanently delete the account "${user}"?\n\n` +
+    `This removes all of their cloud progress and flashcards and CANNOT be undone.\n\n` +
+    `To confirm, type the username exactly:`
+  );
+  if(typed === null) return;            // cancelled
+  if(typed.trim() !== user){
+    alert("That didn't match the username. Nothing was deleted.");
+    return;
+  }
+
+  const k = fbKey(user);
+  try{
+    // remove both their data and any stored password
+    await db.ref("users/"+k).remove();
+    await db.ref("passwords/"+k).remove();
+    // drop from the in-memory list and re-render without a full refetch
+    adminData = adminData.filter(d=>d.user !== user);
+    renderAdminTable();
+  }catch(e){
+    console.warn("Delete failed:", e);
+    const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
+    alert(perm
+      ? `Delete denied by Firebase. Your database rules don't allow removing users/${k}.`
+      : `Couldn't delete "${user}": ${(e && e.message) || 'unknown error'}`);
+  }
+}
 // Returns the LOCAL calendar date as YYYY-MM-DD. Using toISOString()
 // directly would give UTC, which rolls over before local midnight and
 // can double-count streaks for users in negative-offset timezones.
@@ -2310,10 +2803,11 @@ function go(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   window.scrollTo(0,0);
-  if(view==='home') renderHome();
+  if(view==='home'){ updateAccountChip(); renderHome(); }
   if(view==='lessons') renderLessonList();
   if(view==='dict') renderDict();
   if(view==='grammar') renderGrammar();
+  if(view==='admin') loadAdmin();
   if(view==='review') renderReviewHome();
 }
 
@@ -2339,8 +2833,9 @@ function renderLessonList(){
   const intro = lessonsByCourse('intro');
   const foundational = lessonsByCourse('foundational');
   const advanced = lessonsByCourse('advanced');
-  const foundOpen = introDone();
-  const advOpen = foundationalDone();
+  const admin = isAdmin(username);
+  const foundOpen = introDone() || admin;
+  const advOpen = foundationalDone() || admin;
 
   // Each course is a collapsible group; build its body first, then wrap it.
   const introBody = renderCourseCards(intro);
@@ -2393,7 +2888,7 @@ function renderCourseCards(list){
     const done = state.completed.includes(les.id);
     // a lesson is unlocked if it's the first of its course, or the previous lesson in the same course is done. Admins see everything unlocked.
     const prev = i===0 ? null : list[i-1];
-    const unlocked = i===0 || state.completed.includes(prev.id);
+    const unlocked = isAdmin(username) || i===0 || state.completed.includes(prev.id);
     const cls = done ? 'done' : (unlocked ? '' : 'locked');
     const badge = done ? '✓ done' : (unlocked ? 'start →' : '🔒');
     const onclick = unlocked ? `onclick="startLesson(${les.id})"` : '';
@@ -2671,7 +3166,6 @@ function finishLesson(){
   state.xp += earned;
   bumpStreak();
   saveState();
-  if(firstTime) track('lesson-complete/'+les.id, 'Lesson '+les.id+' complete');
 
   // Enroll this lesson's vocab as SRS flashcards (only adds words not already carded)
   const before = Object.keys(srs.cards).length;
@@ -2692,9 +3186,6 @@ function finishLesson(){
   // Likewise when the foundations course is finished, unlocking the advanced tier
   const showFoundGate = les.course==='foundational' && foundationalDone() && firstTime && lessonsByCourse('advanced').length>0;
   const finishedAdvanced = les.course==='advanced' && advancedDone() && firstTime;
-  if(showIntroGate) track('course-complete/intro', 'Finished intro course');
-  if(showFoundGate) track('course-complete/foundations', 'Finished foundations course');
-  if(finishedAdvanced) track('course-complete/advanced', 'Finished advanced course');
 
   const cardLine = newCards>0
     ? `<div class="complete-cards">🃏 ${newCards} new flashcard${newCards>1?'s':''} added to your reviews</div>` : '';
@@ -3462,7 +3953,6 @@ function renderReviewDone(){
   const n = reviewSession.reviewed;
   reviewSession = null;
   fireConfetti();
-  track('review-complete', 'Finished a review session');
   el.innerHTML = `
     <div class="complete fade-up" style="padding:50px 20px">
       <div class="complete-mark">🎉</div>
@@ -3589,12 +4079,25 @@ function buildOrderVariants(tokens){
 function escapeHTML(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* init / bootstrap — no accounts: load this browser's saved progress
-   and open the app. */
-function boot(){
-  state = loadState();
-  srs = loadSRS();
-  go('home');
+/* Enter key submits the login form */
+['loginUser','loginPass'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter') submitLogin(); });
+});
+
+/* init / bootstrap ──────────────────────────────────────────────
+   If the user signed in before, silently resume their session and
+   re-sync from the cloud. Otherwise show the login screen. */
+async function boot(){
+  let saved = "";
+  try{ saved = localStorage.getItem(USER_KEY) || ""; }catch(e){}
+  if(saved){
+    document.getElementById('loginUser').value = saved;
+    await finishLogin(saved);   // pulls cloud, merges, enters app
+  } else {
+    // stay on the login screen (already the active view)
+    updateAccountChip();
+  }
 }
 boot();
 </script>
