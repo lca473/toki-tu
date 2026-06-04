@@ -12,9 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap" rel="stylesheet">
-<!-- Firebase SDK (compat build — same versions used in the Liru app) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<!-- ── Analytics: GoatCounter (privacy-friendly, cookieless; stores no personal data) ──
+     Configured for the "tokitu" site — view stats at https://tokitu.goatcounter.com
+     To use a different GoatCounter site, change the code in the URL below. -->
+<script data-goatcounter="https://tokitu.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 <style>
 /* ════════════════════════════════════════════════════════════════
    toki tu — a local toki pona trainer
@@ -467,29 +469,8 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
 </head>
 <body>
 
-<!-- ═══════════ LOGIN / ACCOUNT ═══════════ -->
-<div class="view active" id="view-login">
-  <div class="login-screen">
-    <div class="login-card fade-up">
-      <div class="login-logo" aria-label="toki pona logo">
-        <img src="Toki_pona.svg" alt="toki pona logo">
-      </div>
-      <div class="login-title">toki <em>tu</em></div>
-      <div class="login-sub">ilo pi toki pona</div>
-      <div class="brand-gloss">a toki pona trainer</div>
-      <div class="login-msg" id="loginMsg">Pick a username to save your progress to the cloud — then you can pick up on any device.</div>
-      <div class="login-err" id="loginErr"></div>
-      <input class="login-field" id="loginUser" type="text" autocomplete="username" placeholder="Username" maxlength="24" spellcheck="false">
-      <input class="login-field" id="loginPass" type="password" autocomplete="current-password" placeholder="Password (optional)">
-      <button class="login-btn" id="loginBtn" onclick="submitLogin()">Continue</button>
-      <div class="login-cloud-note" id="loginCloudNote"></div>
-      <button class="login-skip" onclick="skipLogin()">Just use this device (no account)</button>
-    </div>
-  </div>
-</div>
-
 <!-- ═══════════ HOME ═══════════ -->
-<div class="view" id="view-home">
+<div class="view active" id="view-home">
   <div class="home-head">
     <div class="tp-logo" aria-label="toki pona logo">
       <img src="Toki_pona.svg" alt="toki pona logo">
@@ -523,20 +504,12 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
         <div class="nav-card-arrow">→</div>
       </button>
     </div>
-    <div class="account-bar" id="homeActions">
-      <button class="account-chip" id="accountChip" onclick="openAccount()"><span class="dot" id="accountDot"></span><span id="accountLabel">account</span></button>
-      <button class="home-action" id="renameBtn" onclick="changeUsername()" style="display:none">✎ Rename</button>
-      <span class="account-bar-spacer"></span>
-      <button class="home-action admin" id="adminBtn" onclick="openAdmin()" style="display:none">👁 Admin</button>
-      <button class="home-action logout" id="logoutBtn" onclick="logout()">⎋ Log out</button>
-    </div>
-    <div class="sync-state" id="syncState"></div>
   </div>
   <div class="home-footer">
     Vocabulary from Sonja Lang's <i>Toki Pona: The Language of Good</i> (2014, the <i>pu</i> words) and <i>Toki Pona Dictionary</i> (2021, the <i>ku suli</i> words). Compound phrases are from the <a href="https://tokipona.org/compounds.txt" target="_blank" rel="noopener">compound frequency list at tokipona.org</a>; example sentences were written for this app.
     <span class="tp-note">jan Nijo li pali e lipu ni kepeken ilo sona.</span>
     <span class="tp-gloss">Designed and curated by jan Nijo, built with an AI language tool.</span>
-    Runs on your device and, when you're signed in, syncs your progress to the cloud.
+    Analytics by <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a> — cookieless and privacy-friendly. It collects anonymous, aggregate stats (such as browser, country, screen size, and referrer) and stores no cookies or personal data; <a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener">see exactly what it collects</a>.
   </div>
 </div>
 
@@ -638,25 +611,6 @@ input,textarea,select{font-family:var(--sans);outline:none;color:var(--ink);}
     <div class="section-head"><h2>How toki pona works</h2><p>Tap any section to expand. Best read in order the first time.</p></div>
     <div class="notice"><b>Good to know:</b> toki pona has very few rules. Word order is fixed and there are no verb tenses or plurals. Meaning comes from context — the same word can be a noun, verb, or adjective depending on where it sits.</div>
     <div class="grammar-body" id="grammarBody"></div>
-  </div>
-</div>
-
-<!-- ═══════════ ADMIN — all users' progress ═══════════ -->
-<div class="view" id="view-admin">
-  <div class="topbar"><div class="topbar-inner">
-    <button class="back-btn" onclick="go('home')">‹ Home</button>
-    <div class="topbar-title">Admin</div>
-    <div class="topbar-spacer"></div>
-  </div></div>
-  <div class="wrap">
-    <div class="section-head"><h2>All learners' progress</h2><p>Everyone signed in to this app, pulled live from the cloud.</p></div>
-    <div class="admin-summary" id="adminSummary"></div>
-    <div class="admin-bar">
-      <input id="adminSearch" class="admin-search" type="text" placeholder="Filter by username…" autocomplete="off" oninput="renderAdminTable()">
-      <button class="admin-refresh" onclick="loadAdmin()">↻ Refresh</button>
-    </div>
-    <div id="adminBody"></div>
-    <div class="admin-note">Totals are read directly from each learner's saved progress. Sorted by lessons completed.</div>
   </div>
 </div>
 
@@ -779,6 +733,7 @@ const WORDS = [
   {w:"toki",pos:"verb/noun",def:"to talk, speak, communicate; language, speech; hello", keys:["talk","speak","say","language","communicate","speech","hello","conversation","word","chat","greet"]},
   {w:"tomo",pos:"noun",     def:"indoor space; house, home, room, building", keys:["house","home","room","building","indoor space","structure","apartment","shelter"]},
   {w:"tu",  pos:"number",   def:"two; to split, divide in two", keys:["two","2","split","divide","pair","couple","both"]},
+  {w:"unpa",pos:"verb/noun",def:"sex, sexuality; to have sex with, sleep with", keys:["sex","sexual","sexuality","intimacy","mate","sleep with","intercourse","reproduce","romance"], note:"A content word from the official word list (pu), defined there as 'to have sexual or marital relations with'."},
   {w:"uta", pos:"noun",     def:"mouth; lips", keys:["mouth","lips","oral","speak with mouth"]},
   {w:"utala",pos:"verb",    def:"to fight, battle, struggle, compete, attack", keys:["fight","battle","struggle","compete","attack","war","conflict","combat","contest"]},
   {w:"walo",pos:"modifier",      def:"white, pale, light-colored", keys:["white","pale","light color","cream","ivory"]},
@@ -803,6 +758,7 @@ const WORDS = [
   {w:"n",   pos:"particle",nonpu:true,def:"hmm, uh, mm (hesitation, thinking, or agreement sound)", keys:["hmm","uh","mm","um","hesitation","thinking","agreement","filler"]},
   {w:"misikeke",pos:"noun",nonpu:true,def:"medicine, medical treatment, cure, remedy", keys:["medicine","medical","treatment","cure","remedy","drug","heal","pharmacy"]},
   {w:"ku",  pos:"noun/verb",nonpu:true,def:"interacting with the Toki Pona Dictionary (lipu ku); to interact with that book", keys:["ku","dictionary","lipu ku","toki pona dictionary","interact"]},
+  {w:"tonsi",pos:"noun",   nonpu:true,def:"non-binary, genderqueer, or trans person; someone whose gender is not (only) man or woman", keys:["non-binary","nonbinary","genderqueer","trans","transgender","gender nonconforming","enby","gender"]},
 
   /* ── compounds (phrases built from official words; not counted in the word total) ── */
   {w:"akesi kiwen",compound:true,def:"turtle", keys:["turtle"]},
@@ -1161,7 +1117,7 @@ const WORDS = [
   {w:"tu tu",compound:true,def:"four", keys:["four"]},
   {w:"tu wan",compound:true,def:"three", keys:["three"]},
   {w:"utala ala",compound:true,def:"peace", keys:["peace"]},
-  {w:"utala pi tawa sike",compound:true,def:"jiu jitsu; wrestling", keys:["jiu jitsu","wrestling"]},
+  {w:"utala pi tawa sike",compound:true,def:"wrestling", keys:["wrestling"]},
   {w:"walo loje",compound:true,def:"pink", keys:["pink"]},
   {w:"waso telo",compound:true,def:"duck", keys:["duck"]},
   {w:"wawa ala",compound:true,def:"weak; weakness", keys:["weak","weakness"]},
@@ -2054,9 +2010,9 @@ const LESSONS = [
       {type:"build", q:"<div class='convo-them'><span class='who'>Mun</span>mi pilin pona kin. mi wile pali.</div><span class='convo-cue'>Ask: 'what do you want to do?' (do = pali, what = seme)</span>", answer:["sina","wile","pali","e","seme"], bank:["sina","wile","pali","e","seme","li","ni"], note:"<span class='tp'>sina wile pali e seme?</span> — <span class='tp'>seme</span> sits in the object slot."},
       {type:"type", q:"<div class='convo-them'><span class='who'>Mun</span>mi wile pali e tomo.</div><span class='convo-cue'>Say that's good. (open — a few answers work)</span>", answers:["ni li pona","pona","pona a"], note:"<span class='tp'>ni li pona</span> (that's good) or just <span class='tp'>pona!</span>"},
       {type:"build", q:"<div class='convo-them'><span class='who'>Mun</span>sina wile ala wile pali kin?</div><span class='convo-cue'>Say you want to do this too: 'I want to do this.'</span>", answer:["mi","wile","pali","e","ni"], bank:["mi","wile","pali","e","ni","li"], note:"<span class='tp'>mi wile pali e ni</span> — <span class='tp'>ni</span> as the object."},
-      {type:"type", q:"<div class='convo-them'><span class='who'>Mun</span>pona mute a! mi en sina li pali.</div><span class='convo-cue'>Agree warmly. (open — several answers work)</span>", answers:["mi en sina li pona","sina en mi li pona","pona","pona a","ni li pona"], note:"e.g. <span class='tp'>mi en sina li pona</span> (you and I are good) or just <span class='tp'>pona a!</span>"},
+      {type:"type", q:"<div class='convo-them'><span class='who'>Mun</span>pona mute a! mi en sina li pali.</div><span class='convo-cue'>Agree warmly. (open — several answers work)</span>", answers:["mi en sina li pona","sina en mi li pona","pona","pona a","ni li pona","lon","lon a"], note:"e.g. <span class='tp'>mi en sina li pona</span> (you and I are good) or just <span class='tp'>pona a!</span>"},
       {type:"build", q:"<div class='convo-them'><span class='who'>Mun</span>mi wile tawa tomo mi.</div><span class='convo-cue'>They're heading off — wish them well: 'go well.'</span>", answer:["tawa","pona"], bank:["tawa","pona","sina","mi","e"], note:"<span class='tp'>tawa pona</span> — said to the one who is leaving."},
-      {type:"type", q:"<div class='convo-them'><span class='who'>Mun</span>tawa pona kin a!</div><span class='convo-cue'>Now you're the one heading off — say 'I'm going, be well.'</span>", answers:["mi tawa o pona","mi tawa o pona a","mi tawa","mi tawa a","o pona","tawa pona"], note:"<span class='tp'>mi tawa</span> (I'm going) is what the one leaving says; <span class='tp'>o pona</span> wishes the other well — while <span class='tp'>tawa pona</span> is said <i>to</i> the one departing. sina pini e nasin pi toki pona a!"},
+      {type:"type", q:"<div class='convo-them'><span class='who'>Mun</span>tawa pona kin a!</div><span class='convo-cue'>Now you're the one heading off — say 'I'm going, be well.'</span>", answers:["mi tawa o pona","mi tawa o pona a","mi tawa","mi tawa a","mi weka o pona","mi weka o pona a","mi weka","mi weka a","o pona","tawa pona"], note:"<span class='tp'>mi tawa</span> (I'm going) is what the one leaving says; <span class='tp'>o pona</span> wishes the other well — while <span class='tp'>tawa pona</span> is said <i>to</i> the one departing. sina pini e nasin pi toki pona a!"},
     ]
   },
 ];
@@ -2149,54 +2105,17 @@ const GRAMMAR = [
 ];
 
 /* ════════════════════════════════════════════════════════════════
-   FIREBASE CONFIG
+   STATE & PERSISTENCE  (local-only)
    ────────────────────────────────────────────────────────────────
-   Firebase web API keys are PUBLIC by design — security is enforced
-   by the database rules in the Firebase console, not by key secrecy.
-   It is safe to commit this to a public GitHub repo.
-
-   ▶▶ PASTE YOUR OWN firebaseConfig OBJECT FROM THE FIREBASE CONSOLE
-      OVER THE PLACEHOLDER BELOW. (Setup guide is in the chat.)
-═══════════════════════════════════════════════════════════════ */
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDxohEDO38OtmH3zfJrhXb_Ps8kA5jJZqc",
-  authDomain: "toki-pona-34adf.firebaseapp.com",
-  databaseURL: "https://toki-pona-34adf-default-rtdb.firebaseio.com",
-  projectId: "toki-pona-34adf",
-  storageBucket: "toki-pona-34adf.firebasestorage.app",
-  messagingSenderId: "116234463173",
-  appId: "1:116234463173:web:b1522a2460b7ea74740dac"
-};
-
-let db = null;
-let firebaseReady = false;
-try {
-  if (typeof firebase !== "undefined" && firebase.initializeApp && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    db = firebase.database();
-    firebaseReady = true;
-  }
-} catch(e){ console.warn("Firebase init failed:", e); }
-
-/* ════════════════════════════════════════════════════════════════
-   STATE & PERSISTENCE  (local-first, with optional cloud sync)
-   ────────────────────────────────────────────────────────────────
-   • Progress (state) and flashcards (srs) always live in localStorage.
-   • When the user is signed in, every save also pushes to Firebase,
-     and on login we pull the cloud copy and merge it in.
+   • Progress (state) and flashcards (srs) live in this browser's
+     localStorage. There is no account and no server — each device
+     keeps its own copy.
 ═══════════════════════════════════════════════════════════════ */
 const SAVE_KEY = "sonaPonaProgress_v1";
 const SRS_KEY = "sonaPonaSRS_v1";
 const USER_KEY = "sonaPonaUser_v1";
 
-/* Usernames allowed to see the Admin (all-users progress) screen.
-   Compared case-insensitively. Add or remove names here. */
-const ADMIN_USERS = ["admin"];
-function isAdmin(name){
-  return !!name && ADMIN_USERS.map(u=>u.toLowerCase()).includes(String(name).toLowerCase());
-}
-
-// the signed-in username ("" = playing as a local-only guest)
+// No accounts in this build — each browser keeps its own local progress.
 let username = "";
 function fbKey(u){ return String(u).replace(/[.#$\/\[\]]/g,"_"); }
 
@@ -2242,7 +2161,6 @@ function clampStreak(s){
 }
 function saveState(){
   try{ localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state)); }catch(e){}
-  cloudSave();
 }
 function loadSRS(){
   try{
@@ -2270,434 +2188,23 @@ function migrateCardData(data){
 }
 function saveSRS(){
   try{ localStorage.setItem(keyFor(SRS_KEY), JSON.stringify(srs)); }catch(e){}
-  cloudSave();
 }
 
-/* ── CLOUD SYNC ──────────────────────────────────────────────────
-   All of a user's data lives under  users/<key>/  as:
-     { state:{...}, srs:{cards:{...}}, updatedAt:<ms> }
-   We debounce writes so a burst of saves becomes one network call. */
-let cloudSaveTimer = null;
-function setSyncState(txt){
-  const el = document.getElementById('syncState');
-  if(el) el.textContent = txt;
-}
-function cloudSave(){
-  if(!firebaseReady || !db || !username) return;
-  setSyncState("saving…");
-  clearTimeout(cloudSaveTimer);
-  cloudSaveTimer = setTimeout(()=>{
-    db.ref("users/"+fbKey(username)).update({
-      state: state,
-      srs: srs,
-      updatedAt: Date.now()
-    })
-    .then(()=> setSyncState("✓ saved to cloud"))
-    .catch(e=>{ console.warn("Firebase save error:", e); setSyncState("offline — saved on this device"); });
-  }, 600);
-}
-
-// Pull the cloud copy for this user. Returns {state, srs} or null.
-async function cloudPull(user){
-  if(!firebaseReady || !db || !user) return null;
+/* ═══════════════════════════════════════════════════════════════
+   ANALYTICS  (anonymous, aggregate — GoatCounter)
+   ───────────────────────────────────────────────────────────────
+   No accounts, no IDs, no personal data: we send a "count" event when a
+   learner reaches a milestone (finishes a lesson, a course, or a review
+   session) so the owner can see in aggregate how many people use the app
+   and how far they get. No-op until GoatCounter is configured. */
+function track(path, title){
   try{
-    const snap = await db.ref("users/"+fbKey(user)).once("value");
-    if(snap.exists()) return snap.val();
-  }catch(e){ console.warn("Firebase load error:", e); }
-  return null;
-}
-
-// Merge a cloud snapshot into local state+srs. Cloud is treated as the
-// source of truth for "have I completed this lesson" and for which cards
-// exist; for XP/streak we keep whichever is larger so progress never
-// goes backwards after playing offline on a second device.
-function mergeCloud(cloud){
-  if(!cloud) return;
-  if(cloud.state){
-    const c = cloud.state;
-    state.completed = Array.from(new Set([...(state.completed||[]), ...(c.completed||[])]));
-    state.xp = Math.max(state.xp||0, c.xp||0);
-    // Reconcile the streak triple (streak / lastDay / streakStart). The
-    // record with the more recent lastDay wins; on a tie, keep the larger
-    // streak so offline play on a second device isn't lost. clampStreak
-    // (below) then validates the result against the real elapsed days.
-    const localLast = state.lastDay ? dayToMs(state.lastDay) : -Infinity;
-    const cloudLast = c.lastDay     ? dayToMs(c.lastDay)     : -Infinity;
-    if(cloudLast > localLast){
-      state.streak      = c.streak || 0;
-      state.lastDay     = c.lastDay;
-      state.streakStart = c.streakStart || null;
-    } else if(cloudLast === localLast && cloudLast !== -Infinity){
-      if((c.streak||0) > (state.streak||0)){
-        state.streak = c.streak || 0;
-      }
-      // keep the earliest known start for this shared lastDay
-      if(c.streakStart && (!state.streakStart || dayToMs(c.streakStart) < dayToMs(state.streakStart))){
-        state.streakStart = c.streakStart;
-      }
+    if(window.goatcounter && typeof window.goatcounter.count === 'function'){
+      window.goatcounter.count({ path: path, title: title || path, event: true });
     }
-    // else: local lastDay is newer → keep local streak/lastDay/streakStart
-  }
-  if(cloud.srs && cloud.srs.cards){
-    // adopt every cloud card; for cards in both, keep the one reviewed most recently
-    const cc = cloud.srs.cards;
-    Object.keys(cc).forEach(w=>{
-      const local = srs.cards[w];
-      if(!local){ srs.cards[w] = cc[w]; }
-      else {
-        const cloudNewer = (cc[w].due||0) >= (local.due||0);
-        srs.cards[w] = cloudNewer ? cc[w] : local;
-      }
-    });
-  }
-  // validate the merged streak against actual elapsed days before persisting
-  clampStreak(state);
-  // Cloud cards can carry labels saved before a dictionary edit (e.g. the
-  // adj→modifier re-tagging). Re-sync the merged result so adopted cloud cards
-  // match the current dictionary too. finishLogin's cloudSave() then writes
-  // this corrected copy back, healing the cloud record permanently.
-  migrateCardData(srs);
-  try{
-    localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state));
-    localStorage.setItem(keyFor(SRS_KEY), JSON.stringify(srs));
   }catch(e){}
 }
 
-/* ── ACCOUNT / LOGIN ─────────────────────────────────────────────
-   Username-only by default. An OPTIONAL password adds a light guard
-   so a stranger can't load your data just by guessing your name.
-   This is convenience, NOT real security — see the README. */
-async function submitLogin(){
-  const errEl = document.getElementById('loginErr');
-  const btn   = document.getElementById('loginBtn');
-  errEl.textContent = "";
-  const name = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPass').value;
-  if(!name){ errEl.textContent = "Please enter a username."; return; }
-  if(name.length < 2){ errEl.textContent = "Username must be at least 2 characters."; return; }
-
-  btn.disabled = true; btn.textContent = "Connecting…";
-
-  if(firebaseReady && db){
-    try{
-      const k = fbKey(name);
-      // Check for an existing stored password on this account.
-      const pwSnap = await db.ref("passwords/"+k).once("value");
-      const stored = pwSnap.exists() ? pwSnap.val() : null;
-      if(stored){
-        if(pass !== stored){
-          errEl.textContent = "Wrong password for that username.";
-          btn.disabled = false; btn.textContent = "Continue"; return;
-        }
-      } else if(pass){
-        // first time + a password given → claim it for this username
-        await db.ref("passwords/"+k).set(pass);
-      }
-    }catch(e){
-      console.warn("Login check failed:", e);
-      // fall through — let them in as a local user if the network is down
-    }
-  }
-
-  await finishLogin(name);
-}
-
-async function finishLogin(name){
-  username = name;
-  try{ localStorage.setItem(USER_KEY, name); }catch(e){}
-  // reload local data scoped to this username, then merge the cloud copy
-  state = loadState();
-  srs = loadSRS();
-  const cloud = await cloudPull(name);
-  if(cloud){ mergeCloud(cloud); }
-  // a fresh login also writes back the merged result
-  cloudSave();
-  const btn = document.getElementById('loginBtn');
-  if(btn){ btn.disabled = false; btn.textContent = "Continue"; }
-  enterApp();
-}
-
-function skipLogin(){
-  username = "";
-  state = loadState();
-  srs = loadSRS();
-  enterApp();
-}
-
-function enterApp(){
-  updateAccountChip();
-  go('home');
-}
-
-function updateAccountChip(){
-  const dot = document.getElementById('accountDot');
-  const label = document.getElementById('accountLabel');
-  if(!label) return;
-  if(username){
-    label.textContent = username;
-    dot.className = "dot" + (firebaseReady ? "" : " off");
-  } else {
-    label.textContent = "Sign in to sync";
-    dot.className = "dot off";
-  }
-  // logout button only makes sense when signed in; admin button only for admins
-  const logoutBtn = document.getElementById('logoutBtn');
-  const adminBtn = document.getElementById('adminBtn');
-  const renameBtn = document.getElementById('renameBtn');
-  if(logoutBtn) logoutBtn.style.display = username ? '' : 'none';
-  if(renameBtn) renameBtn.style.display = username ? '' : 'none';
-  if(adminBtn) adminBtn.style.display = isAdmin(username) ? '' : 'none';
-}
-
-function openAccount(){
-  if(username){
-    if(confirm("Signed in as \""+username+"\".\n\nSign out? Your progress stays saved in the cloud and you can sign back in anytime.")){
-      logout();
-    }
-  } else {
-    // go back to the login screen
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-login').classList.add('active');
-    window.scrollTo(0,0);
-  }
-}
-
-function logout(){
-  username = "";
-  try{ localStorage.removeItem(USER_KEY); }catch(e){}
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-login').classList.add('active');
-  document.getElementById('loginUser').value = "";
-  document.getElementById('loginPass').value = "";
-  const btn = document.getElementById('loginBtn');
-  if(btn){ btn.disabled = false; btn.textContent = "Continue"; }
-  const errEl = document.getElementById('loginErr');
-  if(errEl) errEl.textContent = "";
-  setSyncState("");
-}
-
-/* Change the signed-in user's username, carrying their progress,
-   flashcards, and stored password across to the new name. Local-first:
-   when the cloud is connected the data is moved there too — the NEW
-   location is written BEFORE the old one is removed, so an error partway
-   through never loses anything. */
-async function changeUsername(){
-  if(!username){
-    alert("You're playing as a guest, so there's no account name to change yet. Use the account button to sign in or pick a username first.");
-    return;
-  }
-  const oldName = username;
-
-  let next = prompt(`Signed in as "${oldName}".\n\nEnter a new username:`, oldName);
-  if(next === null) return;                 // cancelled
-  next = next.trim();
-
-  if(next === oldName) return;              // unchanged
-  if(next.length < 2){ alert("Username must be at least 2 characters."); return; }
-  if(next.length > 24){ alert("Username must be 24 characters or fewer."); return; }
-
-  const oldKey = fbKey(oldName);
-  const newKey = fbKey(next);
-
-  // Different spelling but the same storage key (e.g. only the case changed,
-  // or characters that sanitise identically) → just relabel, no data moves.
-  if(newKey === oldKey){
-    username = next;
-    try{ localStorage.setItem(USER_KEY, next); }catch(e){}
-    updateAccountChip();
-    setSyncState("✓ renamed to "+next);
-    return;
-  }
-
-  // ── move cloud data, if connected ──
-  if(firebaseReady && db){
-    setSyncState("renaming…");
-    try{
-      // Don't clobber a different person's account.
-      const [uSnap, pSnap] = await Promise.all([
-        db.ref("users/"+newKey).once("value"),
-        db.ref("passwords/"+newKey).once("value")
-      ]);
-      if(uSnap.exists() || pSnap.exists()){
-        alert(`The username "${next}" is already taken. Please pick another.`);
-        setSyncState("");
-        return;
-      }
-      // Carry the password over first (if one was set), then the data,
-      // writing the new node before deleting the old one.
-      const pwOld = await db.ref("passwords/"+oldKey).once("value");
-      if(pwOld.exists()) await db.ref("passwords/"+newKey).set(pwOld.val());
-      await db.ref("users/"+newKey).set({ state: state, srs: srs, updatedAt: Date.now() });
-      await db.ref("users/"+oldKey).remove();
-      await db.ref("passwords/"+oldKey).remove();
-    }catch(e){
-      console.warn("Rename failed:", e);
-      const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
-      alert(perm
-        ? "Rename denied by Firebase — your database rules don't allow writing under users/ or passwords/ for the new name."
-        : `Couldn't rename to "${next}": ${(e && e.message) || 'unknown error'}`);
-      setSyncState("");
-      return;                               // abort; everything stays on the old name
-    }
-  }
-
-  // ── move local data ──
-  username = next;                          // keyFor() now resolves to the new name
-  try{ localStorage.setItem(USER_KEY, next); }catch(e){}
-  try{
-    localStorage.setItem(keyFor(SAVE_KEY), JSON.stringify(state));
-    localStorage.setItem(keyFor(SRS_KEY),  JSON.stringify(srs));
-    localStorage.removeItem(SAVE_KEY+"__"+oldKey);
-    localStorage.removeItem(SRS_KEY +"__"+oldKey);
-  }catch(e){}
-
-  updateAccountChip();
-  setSyncState("✓ renamed to "+next);
-  alert(`Done — you're now "${next}". Your progress and flashcards came with you.`);
-}
-
-/* ════════════════════════════════════════════════════════════════
-   ADMIN — view every signed-in learner's progress (read-only)
-   Pulls the whole  users/  node from Firebase. Visible only to
-   usernames listed in ADMIN_USERS.
-═══════════════════════════════════════════════════════════════ */
-let adminData = [];   // [{user, completed, xp, streak, cards, updatedAt}]
-
-function openAdmin(){
-  if(!isAdmin(username)){ alert("This area is for admins only."); return; }
-  go('admin');
-}
-
-async function loadAdmin(){
-  const body = document.getElementById('adminBody');
-  if(!isAdmin(username)){ body.innerHTML = `<div class="admin-empty">This area is for admins only.</div>`; return; }
-  if(!firebaseReady || !db){
-    body.innerHTML = `<div class="admin-empty">Cloud sync isn't connected, so there's no shared progress to show.<br>Admin needs Firebase to be configured.</div>`;
-    document.getElementById('adminSummary').innerHTML = '';
-    return;
-  }
-  body.innerHTML = `<div class="admin-empty">Loading learners…</div>`;
-  try{
-    const snap = await db.ref("users").once("value");
-    const all = snap.exists() ? snap.val() : {};
-    adminData = Object.keys(all).map(key=>{
-      const rec = all[key] || {};
-      const st = rec.state || {};
-      const cards = (rec.srs && rec.srs.cards) ? Object.keys(rec.srs.cards).length : 0;
-      return {
-        user: key,
-        completed: Array.isArray(st.completed) ? st.completed.length : 0,
-        xp: st.xp || 0,
-        streak: st.streak || 0,
-        cards,
-        updatedAt: rec.updatedAt || 0
-      };
-    });
-    renderAdminTable();
-  }catch(e){
-    console.warn("Admin load failed:", e);
-    const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
-    body.innerHTML = perm
-      ? `<div class="admin-empty"><b>Permission denied by Firebase.</b><br>
-          Your database rules don't allow reading the whole <code>users/</code> node.<br>
-          See the note below for the rule you need to add.</div>`
-      : `<div class="admin-empty">Couldn't load learner data.<br>
-          <span style="font-size:12px">${escapeHTML((e && e.message) || 'Unknown error')}</span></div>`;
-    document.getElementById('adminSummary').innerHTML = '';
-  }
-}
-
-function renderAdminTable(){
-  const body = document.getElementById('adminBody');
-  const summaryEl = document.getElementById('adminSummary');
-  const totalLessons = LESSONS.length;
-
-  // summary across all learners
-  const learners = adminData.length;
-  const totalXP = adminData.reduce((s,d)=>s+d.xp, 0);
-  const activeStreaks = adminData.filter(d=>d.streak>0).length;
-  summaryEl.innerHTML = `
-    <div class="chip"><div class="n">${learners}</div><div class="l">learners</div></div>
-    <div class="chip"><div class="n">${totalXP.toLocaleString()}</div><div class="l">total XP</div></div>
-    <div class="chip"><div class="n">${activeStreaks}</div><div class="l">on a streak</div></div>`;
-
-  const q = (document.getElementById('adminSearch').value || '').trim().toLowerCase();
-  let rows = adminData.slice();
-  if(q) rows = rows.filter(d=>d.user.toLowerCase().includes(q));
-  rows.sort((a,b)=> b.completed - a.completed || b.xp - a.xp);
-
-  if(rows.length===0){
-    body.innerHTML = `<div class="admin-empty">${adminData.length===0 ? 'No learners have signed in yet.' : 'No learners match that filter.'}</div>`;
-    return;
-  }
-
-  const fmtDate=(ms)=> ms ? new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—';
-  body.innerHTML = `
-    <table class="admin-table">
-      <thead><tr>
-        <th>Learner</th><th>Lessons</th><th>Progress</th>
-        <th>XP</th><th>Streak</th><th>Cards</th><th>Last active</th><th></th>
-      </tr></thead>
-      <tbody>
-        ${rows.map(d=>{
-          const pct = totalLessons ? Math.round((d.completed/totalLessons)*100) : 0;
-          const protectedRow = isAdmin(d.user) || d.user.toLowerCase()===String(username).toLowerCase();
-          const delCell = protectedRow
-            ? `<td class="del"><span class="del-protected" title="Admin accounts can't be deleted here">—</span></td>`
-            : `<td class="del"><button class="del-btn" onclick="deleteUser('${escapeAttr(d.user)}')">Delete</button></td>`;
-          return `<tr>
-            <td class="u">${escapeHTML(d.user)}</td>
-            <td>${d.completed}/${totalLessons}</td>
-            <td><div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div></td>
-            <td>${d.xp.toLocaleString()}</td>
-            <td>${d.streak>0?('🔥 '+d.streak):'—'}</td>
-            <td>${d.cards}</td>
-            <td>${fmtDate(d.updatedAt)}</td>
-            ${delCell}
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* Delete a learner's account from the cloud. Destructive + permanent, so
-   it requires the admin to type the exact username to confirm. Admin
-   accounts (and your own) can't be deleted from here. */
-async function deleteUser(user){
-  if(!isAdmin(username)){ alert("This area is for admins only."); return; }
-  if(isAdmin(user) || user.toLowerCase()===String(username).toLowerCase()){
-    alert("Admin accounts can't be deleted here.");
-    return;
-  }
-  if(!firebaseReady || !db){ alert("Cloud isn't connected — nothing to delete."); return; }
-
-  const typed = prompt(
-    `Permanently delete the account "${user}"?\n\n` +
-    `This removes all of their cloud progress and flashcards and CANNOT be undone.\n\n` +
-    `To confirm, type the username exactly:`
-  );
-  if(typed === null) return;            // cancelled
-  if(typed.trim() !== user){
-    alert("That didn't match the username. Nothing was deleted.");
-    return;
-  }
-
-  const k = fbKey(user);
-  try{
-    // remove both their data and any stored password
-    await db.ref("users/"+k).remove();
-    await db.ref("passwords/"+k).remove();
-    // drop from the in-memory list and re-render without a full refetch
-    adminData = adminData.filter(d=>d.user !== user);
-    renderAdminTable();
-  }catch(e){
-    console.warn("Delete failed:", e);
-    const perm = e && (e.code === 'PERMISSION_DENIED' || /permission_denied|Permission denied/i.test(e.message||''));
-    alert(perm
-      ? `Delete denied by Firebase. Your database rules don't allow removing users/${k}.`
-      : `Couldn't delete "${user}": ${(e && e.message) || 'unknown error'}`);
-  }
-}
 // Returns the LOCAL calendar date as YYYY-MM-DD. Using toISOString()
 // directly would give UTC, which rolls over before local midnight and
 // can double-count streaks for users in negative-offset timezones.
@@ -2815,11 +2322,10 @@ function go(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   window.scrollTo(0,0);
-  if(view==='home'){ updateAccountChip(); renderHome(); }
+  if(view==='home') renderHome();
   if(view==='lessons') renderLessonList();
   if(view==='dict') renderDict();
   if(view==='grammar') renderGrammar();
-  if(view==='admin') loadAdmin();
   if(view==='review') renderReviewHome();
 }
 
@@ -2845,9 +2351,8 @@ function renderLessonList(){
   const intro = lessonsByCourse('intro');
   const foundational = lessonsByCourse('foundational');
   const advanced = lessonsByCourse('advanced');
-  const admin = isAdmin(username);
-  const foundOpen = introDone() || admin;
-  const advOpen = foundationalDone() || admin;
+  const foundOpen = introDone();
+  const advOpen = foundationalDone();
 
   // Each course is a collapsible group; build its body first, then wrap it.
   const introBody = renderCourseCards(intro);
@@ -2900,7 +2405,7 @@ function renderCourseCards(list){
     const done = state.completed.includes(les.id);
     // a lesson is unlocked if it's the first of its course, or the previous lesson in the same course is done. Admins see everything unlocked.
     const prev = i===0 ? null : list[i-1];
-    const unlocked = isAdmin(username) || i===0 || state.completed.includes(prev.id);
+    const unlocked = i===0 || state.completed.includes(prev.id);
     const cls = done ? 'done' : (unlocked ? '' : 'locked');
     const badge = done ? '✓ done' : (unlocked ? 'start →' : '🔒');
     const onclick = unlocked ? `onclick="startLesson(${les.id})"` : '';
@@ -3162,7 +2667,7 @@ function renderType(d, qArea, checkBar){
   inp.addEventListener('input', upd);
   inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const b=document.getElementById('typeCheck'); if(b && !b.disabled) checkType(); } });
   window.checkType = function(){
-    const norm = s => s.toLowerCase().trim().replace(/[.,!?;:]+$/,'').replace(/\s+/g,' ');
+    const norm = s => s.toLowerCase().replace(/[.,!?;:]/g,'').replace(/\s+/g,' ').trim();
     const attempt = norm(inp.value);
     const ok = (d.answers||[]).some(a=>norm(a)===attempt);
     inp.disabled = true;
@@ -3178,6 +2683,7 @@ function finishLesson(){
   state.xp += earned;
   bumpStreak();
   saveState();
+  if(firstTime) track('lesson-complete/'+les.id, 'Lesson '+les.id+' complete');
 
   // Enroll this lesson's vocab as SRS flashcards (only adds words not already carded)
   const before = Object.keys(srs.cards).length;
@@ -3198,6 +2704,9 @@ function finishLesson(){
   // Likewise when the foundations course is finished, unlocking the advanced tier
   const showFoundGate = les.course==='foundational' && foundationalDone() && firstTime && lessonsByCourse('advanced').length>0;
   const finishedAdvanced = les.course==='advanced' && advancedDone() && firstTime;
+  if(showIntroGate) track('course-complete/intro', 'Finished intro course');
+  if(showFoundGate) track('course-complete/foundations', 'Finished foundations course');
+  if(finishedAdvanced) track('course-complete/advanced', 'Finished advanced course');
 
   const cardLine = newCards>0
     ? `<div class="complete-cards">🃏 ${newCards} new flashcard${newCards>1?'s':''} added to your reviews</div>` : '';
@@ -3965,6 +3474,7 @@ function renderReviewDone(){
   const n = reviewSession.reviewed;
   reviewSession = null;
   fireConfetti();
+  track('review-complete', 'Finished a review session');
   el.innerHTML = `
     <div class="complete fade-up" style="padding:50px 20px">
       <div class="complete-mark">🎉</div>
@@ -4091,25 +3601,12 @@ function buildOrderVariants(tokens){
 function escapeHTML(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* Enter key submits the login form */
-['loginUser','loginPass'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter') submitLogin(); });
-});
-
-/* init / bootstrap ──────────────────────────────────────────────
-   If the user signed in before, silently resume their session and
-   re-sync from the cloud. Otherwise show the login screen. */
-async function boot(){
-  let saved = "";
-  try{ saved = localStorage.getItem(USER_KEY) || ""; }catch(e){}
-  if(saved){
-    document.getElementById('loginUser').value = saved;
-    await finishLogin(saved);   // pulls cloud, merges, enters app
-  } else {
-    // stay on the login screen (already the active view)
-    updateAccountChip();
-  }
+/* init / bootstrap — no accounts: load this browser's saved progress
+   and open the app. */
+function boot(){
+  state = loadState();
+  srs = loadSRS();
+  go('home');
 }
 boot();
 </script>
